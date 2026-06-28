@@ -27,6 +27,9 @@
     <google-java-format.version>1.35.0</google-java-format.version>
     <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
     <checkstyle.version>13.6.0</checkstyle.version>
+
+    <!-- Lombok: 1.18.40 added JDK 25 support; 1.18.46 is the current release (verified June 2026). -->
+    <lombok.version>1.18.46</lombok.version>
   </properties>
 
   <modules>
@@ -56,11 +59,53 @@
         <artifactId>ai</artifactId>
         <version>${project.version}</version>
       </dependency>
+
+      <!--
+        Lombok — compile-time boilerplate generation, provided scope (annotation processor +
+        compile-time API only; nothing ships at runtime). Version pinned here; modules opt in by
+        declaring the dependency without a version.
+      -->
+      <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>${lombok.version}</version>
+        <scope>provided</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
   <build>
     <plugins>
+      <!--
+        Compiler. Lombok rewrites the javac AST, which JEP 396 strong encapsulation (JDK 16+)
+        blocks on JDK 25; the build forks javac and opens the compiler-internal packages Lombok
+        needs (jdk.compiler/com.sun.tools.javac.*) so annotation processing is error- and
+        warning-free. `-proc:full` names processing explicitly, silencing javac's "processors found
+        on the class path" warning (JDK 21+). The annotation processors themselves (Lombok,
+        spring-boot-configuration-processor) are discovered from the `provided`/optional classpath.
+      -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <proc>full</proc>
+          <fork>true</fork>
+          <compilerArgs>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.jvm=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</arg>
+            <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+
       <!--
         Spotless + google-java-format (Google Java Style). The check goal is gated in `verify`;
         run `mvn spotless:apply` to auto-format. google-java-format needs the JDK compiler

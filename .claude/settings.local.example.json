@@ -1,0 +1,8 @@
+{
+  "_comment": "Copy to settings.local.json (gitignored) for machine-specific permissions. Example: allow CC to read the sibling frontend repo for paired fullstack plans, or allow MCP tools you use locally. Replace the absolute path with your own.",
+  "permissions": {
+    "allow": [
+      "Read(//absolute/path/to/nobilis-platform-front/**)"
+    ]
+  }
+}

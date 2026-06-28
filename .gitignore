@@ -50,3 +50,4 @@ application-local.yaml
 
 # --- Claude Code local ---
 .claude/local-config.json
+.claude/settings.local.json

@@ -18,24 +18,24 @@ continue (playbooks fill in as real patterns emerge: CRUD screen, import-export,
 1. **Check the directory** `.agent/plans/`. If missing — create it: `mkdir -p .agent/plans`.
 
 2. **Ask the user** (if not given in the request):
-   - **Scope**: backend / frontend / fullstack
-   - **Feature ID**: e.g. `NB-001`
-   - **Slug**: kebab-case description (e.g. `entity-translation`)
-   - **Context from web discussion** (optional): if there's a detailed prompt with architectural
-     analysis — use it as the source for the "Architectural decisions" section.
+    - **Scope**: backend / frontend / fullstack
+    - **Feature ID**: e.g. `NB-001`
+    - **Slug**: kebab-case description (e.g. `entity-translation`)
+    - **Context from web discussion** (optional): if there's a detailed prompt with architectural
+      analysis — use it as the source for the "Architectural decisions" section.
 
 3. **For fullstack / cross-repo** — find the sibling repo path:
-   - Read `.claude/local-config.json` if present.
-   - If there's a `frontend_path` (when in back) or `backend_path` (when in front) — use it.
-   - If not — ask the user for the path and offer to save it in `.claude/local-config.json` for later.
-   - During Stage 1 the front may still be empty — then plan single-repo (backend only) and note
-     that the front part will be added later.
+    - Read `.claude/local-config.json` if present.
+    - If there's a `frontend_path` (when in back) or `backend_path` (when in front) — use it.
+    - If not — ask the user for the path and offer to save it in `.claude/local-config.json` for later.
+    - During Stage 1 the front may still be empty — then plan single-repo (backend only) and note
+      that the front part will be added later.
 
 4. **Create the plan file(s)**:
-   - **backend only**: `.agent/plans/<feature-id>-<slug>.md` in this repo (nobilis-platform-back).
-   - **frontend only**: `.agent/plans/<feature-id>-<slug>.md` in the front repo (nobilis-platform-front).
-   - **fullstack**: two files with the same name `<feature-id>-<slug>.md`, one per repo, each with
-     its part and a mutual "Paired plan" link.
+    - **backend only**: `.agent/plans/<feature-id>-<slug>.md` in this repo (nobilis-platform-back).
+    - **frontend only**: `.agent/plans/<feature-id>-<slug>.md` in the front repo (nobilis-platform-front).
+    - **fullstack**: two files with the same name `<feature-id>-<slug>.md`, one per repo, each with
+      its part and a mutual "Paired plan" link.
 
 5. **Plan structure** (markdown):
 
@@ -60,12 +60,18 @@ For fullstack:
 - What to verify/read (standards, docs, existing engine code).
 - Decisions → record in `docs/sources-log.md` (provenance, clean-room).
 
+## Decisions (user-confirmed)
+<Decisions the user has explicitly ratified — kept separate from open Recon TBDs so settled
+questions aren't relitigated. Number them.>
+1. <decision> — <one-line rationale>
+
 ## Goal
 <one sentence: what we do and why>
 
 ## Architectural decisions
 <Key choices and rationale. If there was a web analysis — from there. Keep within the engine/domain
-boundary: this repo is engine only (capabilities); domain specifics go in the homeservice repo.>
+boundary: this repo is engine only (capabilities); domain specifics go in the homeservice repo.
+For front scope, the UI library is PrimeNG (from milestone 03).>
 
 ## Spec — files to create / change
 
@@ -74,7 +80,8 @@ Engine modules: `common`, `ai`, `auth`, `app`, `admin`, `integration`.
 Dependencies strictly one-directional: `common ← {ai, auth} ← {app, admin, integration}`.
 
 - `<module>/src/main/java/io/github/degdev/engine/<module>/...` — description
-- DB migrations (if needed): `common/src/main/resources/db/changelog/<file>`
+- DB migrations (if needed): `common/src/main/resources/db/migration/V<N>__<name>.sql` (Flyway,
+  SQL-first; Postgres-specific SQL is fine — we nail Postgres, not abstract it)
 
 ### Frontend (if scope includes frontend):
 Angular workspace: `common` (lib), `admin` (app), `app` (app).
@@ -91,12 +98,13 @@ Angular workspace: `common` (lib), `admin` (app), `app` (app).
 - Unit (JUnit 5)
 - Integration — if integrations are touched (Kafka, DB, external services)
 ### Frontend (if applicable):
-- Unit (Angular TestBed)
+- Unit (Vitest + Angular TestBed)
 - Component / E2E — if applicable
 
 ## DoD (verifiable readiness criteria)
 - <concrete, measurable conditions: "mvn verify green", "opt-in: builds without X",
   "claim race test — two actors, one wins", etc.>
+- Provenance: each non-trivial decision recorded in `docs/sources-log.md` (clean-room).
 
 ## Open questions
 1. ...
