@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+#
+# nobilis-platform pre-commit gate — block secret-shaped values in staged changes.
+#
+# One-time setup per clone (committed hooks are not auto-enabled by git):
+#     git config core.hooksPath .githooks
+#
+# Fails closed: if gitleaks is not installed the commit is refused, because the gate
+# cannot be trusted without it. Install: https://github.com/gitleaks/gitleaks
+set -eu
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks not found on PATH — the secret-scan gate cannot run." >&2
+  echo "pre-commit: install gitleaks (https://github.com/gitleaks/gitleaks) then retry." >&2
+  exit 1
+fi
+
+echo "pre-commit: scanning staged changes for secrets (gitleaks)…"
+if gitleaks git --staged --redact --no-banner --config .gitleaks.toml; then
+  echo "pre-commit: no secrets detected."
+else
+  echo "" >&2
+  echo "pre-commit: BLOCKED — a secret-shaped value was found in staged changes." >&2
+  echo "pre-commit: remove it. Keys/secrets are never committed (see CLAUDE.md);" >&2
+  echo "pre-commit: tests generate keys at runtime (e.g. @DynamicPropertySource)." >&2
+  exit 1
+fi

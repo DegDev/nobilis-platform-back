@@ -1,0 +1,22 @@
+{
+  "_comment": "Shared, committed Claude Code permissions. Pre-approves safe, repetitive build/test operations so CC doesn't prompt every time. Commits/pushes are intentionally NOT pre-approved — the human reviews and commits. Machine-specific allows (cross-repo read paths, MCP tools) go in settings.local.json (gitignored).",
+  "permissions": {
+    "allow": [
+      "Bash(mvn verify)",
+      "Bash(mvn -B verify)",
+      "Bash(mvn clean verify)",
+      "Bash(mvn compile)",
+      "Bash(mvn test)",
+      "Bash(mvn spotless:apply)",
+      "Bash(mvn spotless:check)",
+      "Bash(mvn checkstyle:check)",
+      "Bash(docker compose -f stack.yml up -d)",
+      "Bash(docker compose -f stack.yml down)",
+      "Bash(docker compose -f stack.yml ps)",
+      "Bash(docker compose -f stack.yml logs:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)"
+    ]
+  }
+}

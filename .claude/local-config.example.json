@@ -1,0 +1,4 @@
+{
+  "_comment": "Copy to local-config.json (gitignored) and set your local absolute path to the frontend repo. Used by the /plan command to write the paired frontend plan for fullstack features.",
+  "frontend_path": "/absolute/path/to/nobilis-platform-front"
+}

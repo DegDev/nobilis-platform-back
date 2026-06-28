@@ -1,0 +1,38 @@
+# gitleaks config — nobilis-platform secret-scan gate.
+#
+# Goal: block real key/secret/token VALUES in any committed file (source, resources, and
+# crucially test resources) while NOT false-positiving on what is explicitly allowed —
+# property NAMES, ${ENV} placeholders, and clearly-fake samples in *.example files.
+# See the "Secrets — never hardcode keys" section in CLAUDE.md.
+
+title = "nobilis-platform gitleaks"
+
+[extend]
+# Start from gitleaks' built-in ruleset (AWS keys, private keys, generic-api-key, etc.).
+useDefault = true
+
+[[rules]]
+id = "nobilis-base64-256bit-key"
+description = "Base64-encoded 256-bit key/secret assigned to a property or field"
+# A secret-ish name, then '=' or ':', then a 44-char Base64 value (43 chars + '=' pad) — the exact
+# shape of an AES-256 key (e.g. nobilis.crypto.master-key=<key>). A bare property NAME with no
+# value, and ${ENV} placeholders, do not match. Entropy gate keeps fake/low-entropy strings out.
+regex = '''(?i)(?:master[-_.]?key|api[-_.]?key|secret|password|passwd|token)["']?\s*[:=]\s*["']?([A-Za-z0-9+/]{43}=)'''
+secretGroup = 1
+entropy = 3.5
+keywords = ["key", "secret", "password", "passwd", "token"]
+
+[allowlist]
+description = "Fake samples and placeholders that must never trip the scan"
+# *.example / *.example.<ext> files carry intentionally-fake structural samples only;
+# dependency/build output is never our source of truth and is excluded from scanning.
+paths = [
+  '''\.example($|\.[^/]+$)''',
+  '''(^|/)node_modules/''',
+  '''(^|/)dist/''',
+  '''(^|/)target/''',
+]
+# ${ENV_VAR} placeholders are references, not values.
+regexes = [
+  '''\$\{[A-Za-z0-9_]+\}''',
+]

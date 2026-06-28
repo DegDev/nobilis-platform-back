@@ -1,26 +1,53 @@
-# Playbooks
+# Playbooks — nobilis-platform-back
 
-Repeatable task recipes for the engine — patterns we've worked out once on a live example and want
-to reproduce uniformly (Claude Code follows them instead of re-inventing).
+Documented project patterns for CLASSES of tasks. The `/plan` command reads this index as its
+**first step** and picks the matching playbook — planning and implementation then follow the
+established pattern instead of re-explaining it each time (previously such patterns were scattered
+across CLAUDE.md / memory / ad-hoc prompts).
+
+Index line format: `` - `<name>.md` — <when to apply (trigger / task class)> [status] ``
 
 ## Principle: extract, don't predict
 
 A playbook is written **after** the first real example, not before. An empty playbook written on
-guesses will need rewriting after the first implementation. So this folder fills up as patterns
-emerge, not in advance.
+guesses will need rewriting after the first implementation. Everything below is **[anticipated]** —
+the task class we expect to recur — and becomes **[ready]** only once we've built one real instance
+and captured the pattern from it. (This is why nothing is `[ready]` yet: no features exist.)
 
-## When each playbook is likely to appear (guideline)
+## Paired (fullstack) playbooks
 
-- **CRUD screen** — at milestone `03` (CRUD framework) or `07` (first domain CRUD): build one screen
-  properly → capture the pattern here → then stamp out the rest by it.
-- **Notification (event → template → transport)** — at milestone `04`.
-- **Async consumer on the bus** — at milestone `04`/`06`.
-- **i18n for a new field/screen** — at milestone `05`.
-- **Integration adapter** (external service, signing, reconciliation) — at milestone `07` (bank) as the exemplar.
+Fullstack playbooks are split into back/front parts so the two repos don't drift through
+duplication. The frontend parts live in `nobilis-platform-front/docs/playbooks/` with a mutual link
+inside each file. The contract (DTOs, endpoints) is the seam between the pair.
 
-## Format
+## Backend playbooks (anticipated)
 
-Each playbook is a separate `<name>.md`: the task class, steps, files/modules, common pitfalls,
-readiness checklist. The `/plan` command reads this README and picks the matching one.
+- `crud-standard-backend.md` — bring a reference-data resource to the standard: entity +
+  repository + the CRUD endpoints registered on the admin CRUD framework. Fullstack pair in front:
+  `crud-standard-frontend.md`. **[anticipated — milestone 03]**
+- `import-export-roundtrip-backend.md` — a resource's export is a dedicated `…/export` in the
+  **import format** (round-trip), not a generic "dump the table to a sheet". Defines the format
+  contract. Fullstack pair in front: `import-export-roundtrip-frontend.md`.
+  **[anticipated — milestone 05/07]**
+- `async-consumer.md` — a Kafka consumer in the integration worker: topic → handler → DLQ topic on
+  failure (no built-in requeue in Kafka). The template for all async work (notifications,
+  moderation, LLM jobs). **[anticipated — milestone 04]**
+- `notification-dispatch.md` — event → template (locale) → transport (email / SMS / Telegram),
+  driven by the generic dispatcher. **[anticipated — milestone 04]**
+- `integration-adapter.md` — an external-service adapter (request, signing, reconciliation via
+  polling, never trusting a callback as authoritative). The bank adapter is the first real
+  instance. **[anticipated — milestone 07]**
 
-> Empty for now — that's expected. The first playbook appears at milestone `03`.
+## Cross-cutting / process playbooks (anticipated)
+
+- `feature-optionality.md` (back part) — opt-in feature wiring; a capability is **off until the
+  host explicitly enables it** (no blanket component-scan), matching the engine opt-in principle.
+  Paired front part in `nobilis-platform-front/docs/playbooks/`. **[anticipated]**
+- `duplicate-detection.md` — find duplicated code before extracting it to a shared place; extract
+  by agreement, EXCEPT in hot/performance-critical paths (keep those separate). Two-sided (Java and
+  TS); this is the primary file. **[anticipated]**
+- `recon-first.md` — recon before touching coupled or risky code; refactor hot code as a separate,
+  tested task, never as a drive-by. Process playbook, both sides. **[anticipated]**
+
+> All entries are anticipated classes, not yet written. The first real playbook is captured at
+> milestone `03`, extracted from the first feature we build — not predicted here.
