@@ -1,0 +1,51 @@
+# Code Conventions — nobilis-platform
+
+The documentary layer of conventions (what the formatter/linter can't catch). Machine layer:
+Spotless + google-java-format + Checkstyle (back), Prettier + angular-eslint (front), gated in CI
+before auto-deploy on merge to `dev`.
+
+Principle: **style is a nail in the build, not discipline or memory.** Tooling normalizes output
+regardless of who/what wrote the code.
+
+## Backend (Java)
+
+**Standard:** Google Java Style. Formatter — Spotless + google-java-format. (Alternative — Palantir
+Java Format, if Spring fluent/builder chains read better at 4-space.)
+
+**Linter:** Checkstyle, a light ruleset for what the formatter doesn't catch:
+- naming,
+- no wildcard imports,
+- import/member ordering.
+
+**Naming (rock-solid):**
+- Types (class/record/enum/interface) — `PascalCase`.
+- Methods/fields/variables/parameters — `camelCase`.
+- `static final` constants — `UPPER_SNAKE_CASE`.
+- Packages — lowercase, reverse-domain: `io.github.degdev.engine.<module>.<feature>`.
+- No Hungarian notation, no `m_`, no `I`-prefix on interfaces.
+
+**Structure:**
+- package-by-feature (not package-by-layer).
+- Constructor injection (no field `@Autowired`).
+- Clear DTO ↔ entity boundaries: an entity does not leak beyond its layer.
+- Error handling — a single approach (domain exceptions + handler), no swallowing.
+
+## Frontend (Angular)
+
+**Standard:** the official Angular Style Guide. Formatter — Prettier. Linter — angular-eslint
++ `eslint-config-prettier` (so rules don't conflict).
+
+> ⚠️ Angular 22 is fresh (released June 3, 2026): some style details shifted (e.g. the `.component`
+> suffix). Before finalizing this section — verify against the live Angular Style Guide, not memory.
+
+## Common
+
+- **EditorConfig** in both repos: charset, EOL, indent, trailing-whitespace. Read by all IDEs.
+- **Pin formatter versions** — otherwise format drifts between machines and CI.
+- Tests — next to the feature; unified test-naming conventions (to be settled with the first module).
+
+## Why public standards, not "how previous projects did it"
+
+Adopting a named public standard (Google Java Style, Angular Style Guide) is a sources-log for code
+style: "followed Google Style", not "copied someone else's conventions". Cleaner for clean-room and
+clearer to any external contributor.

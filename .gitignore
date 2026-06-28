@@ -1,0 +1,52 @@
+# --- Maven ---
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# --- Java ---
+*.class
+*.log
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+replay_pid*
+
+# --- IDE: IntelliJ IDEA ---
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# --- IDE: Eclipse / VS Code ---
+.classpath
+.project
+.settings/
+.vscode/
+bin/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Local env / secrets (NEVER commit keys) ---
+.env
+.env.local
+*-local.properties
+application-local.yml
+application-local.yaml
+
+# --- Claude Code local ---
+.claude/local-config.json
