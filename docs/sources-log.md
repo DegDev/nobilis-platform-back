@@ -26,6 +26,7 @@ from. Evidence of independent clean-room creation. Appended to as we go.
 | Bank protocol (domain) | From the Agroprombank "Web-payment" v2.0 technical documentation. |
 | OSS license Apache 2.0 | Explicit patent grant, corporate-friendly. |
 | `.java` header = `Apache-2.0 + DegDev` | NOT a default/corporate template. A global Claude Code rule mandated a Compo header — rejected as clean-room contamination; the repo-local rule (CLAUDE.md/notes) overrides the global one. First clean-room risk that fired — the documentary layer caught it. |
+| CI gate = GitHub Actions, single `mvn -B verify` job | `.github/workflows/ci.yml` on push-to-main + pull_request; `ubuntu-latest`, JDK 25 Temurin via `actions/setup-java@v5` (`cache: maven`), checkout via `actions/checkout@v7` (current majors, verified June 2026). `verify` reuses the local gate (Spotless check + Checkstyle + build), so the same format/lint failures block the pipeline. `permissions: contents: read` (least privilege). No deploy — auto-deploy lives in the private domain repo. |
 
 ## TODO (close in recon tickets)
 - Exact image pins: Redpanda Console, MinIO, Mailpit (currently :latest in stack.yml).

@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Least privilege: the build only needs to read the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build & verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 25 (Temurin)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      # `verify` runs Spotless check + Checkstyle + build, so any format/lint
+      # violation fails the pipeline — this is the required gate.
+      - name: Build and verify
+        run: mvn -B verify
