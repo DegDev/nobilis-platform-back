@@ -13,7 +13,5 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Provider-agnostic LLM adapters. Opt-in: the engine builds and runs without this module.
- */
+/** Provider-agnostic LLM adapters. Opt-in: the engine builds and runs without this module. */
 package io.github.degdev.engine.ai;

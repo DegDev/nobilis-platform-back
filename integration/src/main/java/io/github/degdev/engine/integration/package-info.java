@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 /**
- * Integration worker runnable: Kafka bus, notification dispatcher, transports, and the
- * scheduler. Headless worker; no HTTP endpoint.
+ * Integration worker runnable: Kafka bus, notification dispatcher, transports, and the scheduler.
+ * Headless worker; no HTTP endpoint.
  */
 package io.github.degdev.engine.integration;

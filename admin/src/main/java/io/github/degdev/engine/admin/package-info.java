@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 /**
- * Admin runnable: the CRUD framework and engine screens (access, CMS, notifications,
- * settings). HTTP application.
+ * Admin runnable: the CRUD framework and engine screens (access, CMS, notifications, settings).
+ * HTTP application.
  */
 package io.github.degdev.engine.admin;

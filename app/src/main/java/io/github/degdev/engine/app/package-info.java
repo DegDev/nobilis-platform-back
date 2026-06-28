@@ -13,7 +13,5 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/**
- * Portal shell runnable and the extension points domain modules plug into. HTTP application.
- */
+/** Portal shell runnable and the extension points domain modules plug into. HTTP application. */
 package io.github.degdev.engine.app;

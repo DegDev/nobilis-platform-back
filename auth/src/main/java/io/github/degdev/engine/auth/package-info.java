@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 /**
- * Authentication building blocks: tokens and identity providers (email/password, Telegram,
- * SMS). Controllers are opt-in.
+ * Authentication building blocks: tokens and identity providers (email/password, Telegram, SMS).
+ * Controllers are opt-in.
  */
 package io.github.degdev.engine.auth;
