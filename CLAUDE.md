@@ -120,6 +120,28 @@ a defect even if the build is green.
 - Before coding a milestone — a recon ticket: close remaining TBDs, record them in sources-log.
 - Each task is atomic and verifiable against its DoD.
 
+## Working principles
+
+How the agent works on every task — independent of the prompt's wording.
+
+- **Think before coding.** State assumptions; if a request has more than one reading, surface the
+  options instead of silently picking one. If a simpler approach exists, say so. When something is
+  unclear, **STOP**, name exactly what's unclear, and ask — don't guess.
+- **Simplicity first.** The minimum code that solves the task. No speculative features, abstractions,
+  configurability, or error handling for impossible cases that weren't asked for.
+- **Surgical changes.** Touch only what the task needs. Don't reformat, rename, or "improve"
+  neighbouring code; match the existing style even where you'd do it differently. Each changed line
+  must trace back to the request.
+- **Goal-driven.** Turn the task into a verifiable success criterion and loop until it's met
+  ("add validation" → write tests for bad input, then make them pass).
+
+## Commit gate
+
+The agent does **not** commit on its own. Finishing a task = **STOP + a short report** (files
+touched, result, what was verified) **+ a proposed commit message**. The user reviews and commits.
+This holds even when a specific prompt doesn't restate it; build/docs/fix prompts that repeat a
+"commit gate" line are only echoing this rule.
+
 ## MCP servers — mandatory usage
 
 This project runs Claude Code from VSCode against BOTH repos (`nobilis-platform-back`,
