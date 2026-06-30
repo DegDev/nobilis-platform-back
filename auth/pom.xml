@@ -21,5 +21,55 @@
       <groupId>io.github.degdev</groupId>
       <artifactId>common</artifactId>
     </dependency>
+
+    <!-- Lombok: compile-time constructor injection (@RequiredArgsConstructor). Provided scope. -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+    </dependency>
+
+    <!--
+      Spring MVC (no embedded server): lets this library contribute @RestController endpoints that
+      the host application mounts. The runnable host (admin) brings spring-boot-starter-web.
+    -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-webmvc</artifactId>
+    </dependency>
+
+    <!-- BCrypt password hashing (Spring Security's crypto module, no full Security stack). -->
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-crypto</artifactId>
+    </dependency>
+
+    <!-- JSON for the hand-rolled HS256 JWT header/claims (RFC 7519). -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+
+    <!-- @ConfigurationProperties metadata for IDE/tooling (does not ship at runtime). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-configuration-processor</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- Tests: JUnit 5 + AssertJ + Spring Boot test (ApplicationContextRunner, MockMvc). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!--
+      Servlet API for the standalone-MockMvc slice. spring-webmvc keeps jakarta.servlet provided,
+      so it is not on the test classpath transitively; the runnable host supplies it at runtime.
+    -->
+    <dependency>
+      <groupId>jakarta.servlet</groupId>
+      <artifactId>jakarta.servlet-api</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

@@ -1,0 +1,3 @@
+io.github.degdev.engine.auth.token.TokenAutoConfiguration
+io.github.degdev.engine.auth.password.PasswordAutoConfiguration
+io.github.degdev.engine.auth.adminlogin.AdminLoginAutoConfiguration
