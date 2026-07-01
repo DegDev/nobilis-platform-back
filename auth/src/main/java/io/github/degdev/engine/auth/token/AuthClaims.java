@@ -20,11 +20,25 @@ import java.util.List;
 
 /**
  * The verified payload of a JWT, as returned by {@link JwtService#validate(String)}. Holds the
- * subject (who the token is about), the granted roles, and the issued/expiry instants.
+ * subject (who the token is about), the granted roles, the realms and effective permissions the
+ * token carries, and the issued/expiry instants.
+ *
+ * <p>{@code realms} and {@code permissions} are the "thick" part of the token: the coarse realm
+ * gate and the atomic permissions a request may exercise, baked in at issue time so a gate can
+ * authorize without a database round-trip. A token issued before these existed ("thin") still
+ * validates — both come back as empty lists.
  *
  * @param subject the {@code sub} claim — typically the authenticated identity
- * @param roles the {@code roles} claim — authorities granted to the subject
+ * @param roles the {@code roles} claim — role codes granted to the subject (display / back-compat)
+ * @param realms the {@code realms} claim — {@link io.github.degdev.engine.auth.account.Realm} names
+ * @param permissions the {@code permissions} claim — effective permission strings
  * @param issuedAt the {@code iat} claim as an {@link Instant}
  * @param expiresAt the {@code exp} claim as an {@link Instant}
  */
-public record AuthClaims(String subject, List<String> roles, Instant issuedAt, Instant expiresAt) {}
+public record AuthClaims(
+    String subject,
+    List<String> roles,
+    List<String> realms,
+    List<String> permissions,
+    Instant issuedAt,
+    Instant expiresAt) {}

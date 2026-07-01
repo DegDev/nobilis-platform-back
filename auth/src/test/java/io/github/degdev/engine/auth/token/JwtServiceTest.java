@@ -51,6 +51,33 @@ class JwtServiceTest {
   }
 
   @Test
+  void thickTokenRoundTripsRealmsAndPermissions() {
+    JwtService service = serviceAt(FIXED);
+
+    AuthClaims claims =
+        service.validate(
+            service.issue(
+                "admin@example.org",
+                List.of("ADMIN"),
+                List.of("ADMIN"),
+                List.of("SETTINGS_MANAGE", "ACCOUNT_MANAGE")));
+
+    assertThat(claims.realms()).containsExactly("ADMIN");
+    assertThat(claims.permissions()).containsExactly("SETTINGS_MANAGE", "ACCOUNT_MANAGE");
+  }
+
+  @Test
+  void thinTokenValidatesWithEmptyRealmsAndPermissions() {
+    JwtService service = serviceAt(FIXED);
+
+    AuthClaims claims = service.validate(service.issue("admin@example.org", List.of("ADMIN")));
+
+    assertThat(claims.roles()).containsExactly("ADMIN");
+    assertThat(claims.realms()).isEmpty();
+    assertThat(claims.permissions()).isEmpty();
+  }
+
+  @Test
   void tokenHasThreeSegments() {
     assertThat(serviceAt(FIXED).issue("s", List.of()).split("\\.")).hasSize(3);
   }

@@ -15,7 +15,9 @@
  */
 package io.github.degdev.engine.auth.adminlogin;
 
+import io.github.degdev.engine.auth.account.Realm;
 import io.github.degdev.engine.auth.password.PasswordHasher;
+import io.github.degdev.engine.auth.role.EnginePermissions;
 import io.github.degdev.engine.auth.token.JwtService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,11 @@ import lombok.RequiredArgsConstructor;
  * success, issues a signed JWT carrying the {@code ADMIN} role. The check is deliberately
  * all-or-nothing: a wrong email, a wrong password, or an unconfigured credential all yield the same
  * {@link InvalidCredentialsException}, so the endpoint leaks nothing about which part failed.
+ *
+ * <p>The token is "thick": the config-admin has no {@code account} row (that is a later pass), so
+ * its realms and permissions are hardcoded here — the {@link Realm#ADMIN} realm and the full {@link
+ * EnginePermissions#ALL} catalog. A real, database-backed account resolves these from its roles
+ * instead.
  */
 @RequiredArgsConstructor
 public class AdminLoginService {
@@ -54,6 +61,10 @@ public class AdminLoginService {
     if (!valid) {
       throw new InvalidCredentialsException();
     }
-    return jwtService.issue(properties.email(), List.of(ADMIN_ROLE));
+    return jwtService.issue(
+        properties.email(),
+        List.of(ADMIN_ROLE),
+        List.of(Realm.ADMIN.name()),
+        List.copyOf(EnginePermissions.ALL));
   }
 }

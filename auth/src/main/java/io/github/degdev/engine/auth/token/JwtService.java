@@ -91,19 +91,39 @@ public final class JwtService {
   }
 
   /**
-   * Issues a signed token for the subject, valid from now until {@code now + ttl}.
+   * Issues a "thin" token carrying only the subject and roles; realms and permissions are empty.
+   * Kept for callers that do not need the thick claims.
    *
    * @param subject the identity the token is about (the {@code sub} claim)
    * @param roles authorities to embed (the {@code roles} claim); may be empty, never {@code null}
    * @return the compact {@code header.payload.signature} token
    */
   public String issue(String subject, List<String> roles) {
+    return issue(subject, roles, List.of(), List.of());
+  }
+
+  /**
+   * Issues a "thick" signed token, valid from now until {@code now + ttl}, embedding the realms and
+   * effective permissions alongside the subject and roles so a gate can authorize without a
+   * database round-trip.
+   *
+   * @param subject the identity the token is about (the {@code sub} claim)
+   * @param roles role codes to embed (the {@code roles} claim); may be empty, never {@code null}
+   * @param realms realm names to embed (the {@code realms} claim); may be empty, never {@code null}
+   * @param permissions permission strings to embed (the {@code permissions} claim); may be empty,
+   *     never {@code null}
+   * @return the compact {@code header.payload.signature} token
+   */
+  public String issue(
+      String subject, List<String> roles, List<String> realms, List<String> permissions) {
     Instant now = clock.instant();
     Instant expiry = now.plus(ttl);
 
     Map<String, Object> claims = new LinkedHashMap<>();
     claims.put("sub", subject);
     claims.put("roles", roles);
+    claims.put("realms", realms);
+    claims.put("permissions", permissions);
     claims.put("iat", now.getEpochSecond());
     claims.put("exp", expiry.getEpochSecond());
 
@@ -149,7 +169,9 @@ public final class JwtService {
     }
     return new AuthClaims(
         payload.path("sub").asText(null),
-        readRoles(payload),
+        readStringList(payload, "roles"),
+        readStringList(payload, "realms"),
+        readStringList(payload, "permissions"),
         Instant.ofEpochSecond(payload.path("iat").asLong()),
         Instant.ofEpochSecond(exp));
   }
@@ -163,13 +185,13 @@ public final class JwtService {
     }
   }
 
-  private static List<String> readRoles(JsonNode payload) {
-    List<String> roles = new ArrayList<>();
-    JsonNode rolesNode = payload.get("roles");
-    if (rolesNode != null && rolesNode.isArray()) {
-      rolesNode.forEach(node -> roles.add(node.asText()));
+  private static List<String> readStringList(JsonNode payload, String field) {
+    List<String> values = new ArrayList<>();
+    JsonNode node = payload.get(field);
+    if (node != null && node.isArray()) {
+      node.forEach(element -> values.add(element.asText()));
     }
-    return List.copyOf(roles);
+    return List.copyOf(values);
   }
 
   private String toJson(Map<String, Object> claims) {

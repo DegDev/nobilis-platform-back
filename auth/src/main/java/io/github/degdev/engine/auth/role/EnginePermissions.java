@@ -15,6 +15,8 @@
  */
 package io.github.degdev.engine.auth.role;
 
+import java.util.Set;
+
 /**
  * The engine's own permission catalog: atomic authorities the engine gates its own capabilities on.
  * Permissions are deliberately plain {@code String} constants, not a Java enum, so a domain product
@@ -32,6 +34,13 @@ public final class EnginePermissions {
 
   /** Manage accounts (create/administer identities, realms, and role assignments). */
   public static final String ACCOUNT_MANAGE = "ACCOUNT_MANAGE";
+
+  /**
+   * Every engine permission, as a single source of truth. Grow this alongside the constants above
+   * so a "grant everything" caller (e.g. the config-admin) never drifts out of sync with the
+   * catalog.
+   */
+  public static final Set<String> ALL = Set.of(SETTINGS_MANAGE, ACCOUNT_MANAGE);
 
   private EnginePermissions() {}
 }

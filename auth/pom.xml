@@ -63,13 +63,15 @@
       <scope>test</scope>
     </dependency>
     <!--
-      Servlet API for the standalone-MockMvc slice. spring-webmvc keeps jakarta.servlet provided,
-      so it is not on the test classpath transitively; the runnable host supplies it at runtime.
+      Servlet API, provided scope: the inbound gate (JwtAuthenticationFilter extends
+      OncePerRequestFilter) references jakarta.servlet types at compile time, and the standalone
+      MockMvc slice needs them on the test classpath. spring-webmvc keeps jakarta.servlet provided
+      (not transitive), so it is declared here; the runnable host supplies the implementation.
     -->
     <dependency>
       <groupId>jakarta.servlet</groupId>
       <artifactId>jakarta.servlet-api</artifactId>
-      <scope>test</scope>
+      <scope>provided</scope>
     </dependency>
 
     <!--

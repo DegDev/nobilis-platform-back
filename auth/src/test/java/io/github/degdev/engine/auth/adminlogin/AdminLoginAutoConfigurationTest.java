@@ -18,9 +18,11 @@ package io.github.degdev.engine.auth.adminlogin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.degdev.engine.auth.account.Realm;
 import io.github.degdev.engine.auth.adminlogin.web.AdminLoginController;
 import io.github.degdev.engine.auth.password.PasswordAutoConfiguration;
 import io.github.degdev.engine.auth.password.PasswordHasher;
+import io.github.degdev.engine.auth.role.EnginePermissions;
 import io.github.degdev.engine.auth.token.JwtService;
 import io.github.degdev.engine.auth.token.TokenAutoConfiguration;
 import io.github.degdev.engine.common.crypto.CryptoKeyGenerator;
@@ -111,6 +113,22 @@ class AdminLoginAutoConfigurationTest {
               assertThat(jwtService.validate(token).roles()).containsExactly("ADMIN");
               assertThatThrownBy(() -> service.login(EMAIL, "wrong-password"))
                   .isInstanceOf(InvalidCredentialsException.class);
+            });
+  }
+
+  @Test
+  void enabledLoginIssuesAThickAdminToken() {
+    enabledRunner()
+        .run(
+            context -> {
+              AdminLoginService service = context.getBean(AdminLoginService.class);
+              JwtService jwtService = context.getBean(JwtService.class);
+
+              var claims = jwtService.validate(service.login(EMAIL, RAW_PASSWORD));
+
+              assertThat(claims.realms()).containsExactly(Realm.ADMIN.name());
+              assertThat(claims.permissions())
+                  .containsExactlyInAnyOrderElementsOf(EnginePermissions.ALL);
             });
   }
 
