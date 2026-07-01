@@ -69,11 +69,20 @@ class JwtServiceTest {
   @Test
   void tamperedSignatureIsRejected() {
     String token = serviceAt(FIXED).issue("admin@example.org", List.of("ADMIN"));
-    char[] chars = token.toCharArray();
-    int last = chars.length - 1;
-    chars[last] = chars[last] == 'A' ? 'B' : 'A';
+    int sig = token.lastIndexOf('.') + 1;
 
-    assertThatThrownBy(() -> serviceAt(FIXED).validate(new String(chars)))
+    // Flip the FIRST char of the signature segment: it carries a full 6 significant bits, so the
+    // decoded signature always changes. The LAST char is unsafe — for a 32-byte HMAC its low 2 bits
+    // are ignored padding, so flipping it can decode to identical bytes and silently pass.
+    char[] chars = token.toCharArray();
+    chars[sig] = chars[sig] == 'A' ? 'B' : 'A';
+    String tampered = new String(chars);
+
+    // Guard against a no-op tamper: the decoded signature bytes must actually differ.
+    assertThat(Base64.getUrlDecoder().decode(tampered.substring(sig)))
+        .isNotEqualTo(Base64.getUrlDecoder().decode(token.substring(sig)));
+
+    assertThatThrownBy(() -> serviceAt(FIXED).validate(tampered))
         .isInstanceOf(JwtException.class)
         .hasMessageContaining("signature");
   }
