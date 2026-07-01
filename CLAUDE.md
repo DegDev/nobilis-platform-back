@@ -61,6 +61,8 @@ Checkstyle, gated in CI before merge to dev. We don't rely on memory — tooling
   GitHub account DegDev — free). "platform" lives in the repo name, NOT in packages.
 - Standard Java naming: PascalCase types, camelCase members, UPPER_SNAKE_CASE constants.
 - Constructor injection. package-by-feature. Clear DTO/entity boundaries.
+- DB table naming: `entity_extra_fields` (entity first), avoid SQL-reserved names, `varchar` over
+  native Postgres enums — full rules in `docs/conventions.md`.
 
 ## Package structure — package-by-feature (CRITICAL, enforced)
 

@@ -30,6 +30,19 @@ Java Format, if Spring fluent/builder chains read better at 4-space.)
 - Clear DTO ↔ entity boundaries: an entity does not leak beyond its layer.
 - Error handling — a single approach (domain exceptions + handler), no swallowing.
 
+**Database table naming:**
+- Convention: `entity_extra_fields` — entity name FIRST, so related tables sort together
+  when listing the schema (e.g. `account`, `account_identity`, `account_realm`, `account_role`
+  group under `account`; `role`, `role_permission` group under `role`).
+- Avoid SQL reserved words as table names (`user`, `order`, etc.) — they force quoting in raw
+  SQL. Prefer a non-reserved synonym (`account` instead of `user`).
+- Column types: use `varchar` for enum-like values; do NOT use native Postgres `CREATE TYPE
+  AS ENUM` (values can't be dropped/renamed without recreating the type — migration pain).
+  "Enum-ness" lives in Java (`@Enumerated(STRING)`) or in string-constant catalogs, not in the DB.
+- Join tables: composite PK (`PK(a_id, b_id)`), no surrogate id, unless the link is itself an
+  audited entity (then it extends BaseEntity with its own id).
+- Unique constraints named `uq_<table>_<col>` (existing convention from V1 baseline).
+
 ## Frontend (Angular)
 
 **Standard:** the official Angular Style Guide. Formatter — Prettier. Linter — angular-eslint
