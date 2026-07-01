@@ -142,6 +142,24 @@ touched, result, what was verified) **+ a proposed commit message**. The user re
 This holds even when a specific prompt doesn't restate it; build/docs/fix prompts that repeat a
 "commit gate" line are only echoing this rule.
 
+## Branch discipline (CRITICAL, enforced)
+
+One branch per milestone (`01-common`, `02-auth`, `03-app-admin-shell`, ...), branched from
+`main`. **`main` is NEVER pushed to directly — all integration into `main` happens via a
+GitHub Pull Request (PR), even for a single-commit change.** Docs commits ride on whatever
+branch is current — universal, not milestone-locked.
+
+**Before running `git commit` for ANY reason**, verify the current branch matches the
+milestone/task actually being worked on by running `git branch --show-current`.
+- If the current branch does NOT match what's being worked on — **STOP. Do not commit.**
+  Report the mismatch, ask whether to switch or whether it's intentional.
+- **Never `git push origin main`.** If work needs to land on `main`, open a PR from the
+  current branch and stop — the user merges it (or explicitly asks the agent to via `gh pr
+  merge`).
+
+**On the remote:** merge PRs via "Squash and merge" or "Rebase and merge", NOT the default
+"Merge pull request" — the latter creates a merge commit that breaks linear history.
+
 ## MCP servers — mandatory usage
 
 This project runs Claude Code from VSCode against BOTH repos (`nobilis-platform-back`,
