@@ -28,9 +28,8 @@ services:
       timeout: 3s
       retries: 10
 
-  # Adminer — lightweight DB browser for Postgres. Opt-in: gated behind the
-  # `dev-tools` profile, so a plain `up -d` does NOT start it. Enable with
-  # `docker compose -f stack.yml --profile dev-tools up -d`, then http://localhost:8081.
+  # Adminer — lightweight DB browser for Postgres. Starts with the default
+  # `up -d`; browse at http://localhost:8081.
   adminer:
     image: adminer:latest                 # TODO-pin: set a concrete tag
     container_name: nobilis-adminer
@@ -40,7 +39,6 @@ services:
       ADMINER_DEFAULT_SERVER: postgres    # pre-fills the login form's Server field
     depends_on:
       - postgres
-    profiles: ["dev-tools"]
 
   kafka:
     image: apache/kafka:4.3.1
