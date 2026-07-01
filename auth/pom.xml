@@ -71,5 +71,26 @@
       <artifactId>jakarta.servlet-api</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <!--
+      Testcontainers Postgres for the account persistence slice (Flyway + JPA against a real DB).
+      JPA/Flyway/driver come transitively (compile) from common; these test-scoped artifacts do not,
+      so they are declared here. Versions are managed by the Spring Boot BOM.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>
