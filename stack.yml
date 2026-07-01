@@ -31,7 +31,6 @@ services:
   # Adminer — lightweight DB browser for Postgres. Opt-in: gated behind the
   # `dev-tools` profile, so a plain `up -d` does NOT start it. Enable with
   # `docker compose -f stack.yml --profile dev-tools up -d`, then http://localhost:8081.
-  # (8081, not 8086 — 8086 is used by the demo-back backend on this host.)
   adminer:
     image: adminer:latest                 # TODO-pin: set a concrete tag
     container_name: nobilis-adminer
