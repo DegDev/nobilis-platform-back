@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.auth.account;
 
+import io.github.degdev.engine.auth.role.Role;
 import io.github.degdev.engine.common.persistence.BaseEntity;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -23,6 +24,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -33,14 +36,16 @@ import lombok.Setter;
 
 /**
  * The identity root: one person/system the engine knows, independent of how they authenticate. An
- * account carries a lifecycle {@link AccountStatus} and a set of {@link Realm}s (the coarse
- * admin/client gate). How it proves identity lives in {@link AccountIdentity} (one row per
- * provider); roles and permissions arrive in a later pass.
+ * account carries a lifecycle {@link AccountStatus}, a set of {@link Realm}s (the coarse
+ * admin/client gate), and a set of {@link Role}s (permission bundles that drive its effective
+ * permissions). How it proves identity lives in {@link AccountIdentity} (one row per provider).
  *
  * <p>Realms are modelled as an {@code @ElementCollection} rather than a separate entity: they are a
  * value collection owned by the account, with no identity or audit of their own. The mapping yields
  * the {@code account_realm} join table with a composite {@code (account_id, realm)} key and no
- * surrogate id.
+ * surrogate id. Roles are a {@code @ManyToMany} to the {@link Role} entity, yielding the {@code
+ * account_role} join table (composite {@code (account_id, role_id)} key, no surrogate id) — the
+ * same owner-collection philosophy, expressed for an entity target rather than a value.
  *
  * <p>Lombok: {@code @Getter} on the type; {@code @Setter} only on {@code status}. Equality is left
  * as JVM identity — an account has no natural business key (identity is proven through {@link
@@ -64,6 +69,13 @@ public class Account extends BaseEntity {
   @Column(name = "realm", nullable = false, length = 16)
   private Set<Realm> realms = new LinkedHashSet<>();
 
+  @ManyToMany
+  @JoinTable(
+      name = "account_role",
+      joinColumns = @JoinColumn(name = "account_id"),
+      inverseJoinColumns = @JoinColumn(name = "role_id"))
+  private Set<Role> roles = new LinkedHashSet<>();
+
   /**
    * Creates a new account in the given status with no realms yet.
    *
@@ -85,5 +97,19 @@ public class Account extends BaseEntity {
   /** {@return an unmodifiable view of this account's realms} */
   public Set<Realm> getRealms() {
     return Set.copyOf(realms);
+  }
+
+  /**
+   * Assigns a role to this account (idempotent).
+   *
+   * @param role the role to grant
+   */
+  public void addRole(Role role) {
+    this.roles.add(role);
+  }
+
+  /** {@return an unmodifiable view of this account's roles} */
+  public Set<Role> getRoles() {
+    return Set.copyOf(roles);
   }
 }
