@@ -28,10 +28,13 @@ import lombok.RequiredArgsConstructor;
  * all-or-nothing: a wrong email, a wrong password, or an unconfigured credential all yield the same
  * {@link InvalidCredentialsException}, so the endpoint leaks nothing about which part failed.
  *
- * <p>The token is "thick": the config-admin has no {@code account} row (that is a later pass), so
- * its realms and permissions are hardcoded here — the {@link Realm#ADMIN} realm and the full {@link
- * EnginePermissions#ALL} catalog. A real, database-backed account resolves these from its roles
- * instead.
+ * <p>This is an intentional STATELESS bootstrap path, not a missing migration — do not "fix" it by
+ * seeding an {@code account} row. The config-admin is bootstrap/owner access that must work even
+ * against an empty or broken database (before any account exists, or if account infrastructure is
+ * down), so it cannot depend on DB state. Its token is therefore "thick" with hardcoded authority:
+ * the {@link Realm#ADMIN} realm and the full {@link EnginePermissions#ALL} catalog. Database-backed
+ * accounts arrive later with the identity providers and resolve their realms/permissions from their
+ * roles instead; the config-admin stands alongside them, never replaced by them.
  */
 @RequiredArgsConstructor
 public class AdminLoginService {
@@ -61,6 +64,7 @@ public class AdminLoginService {
     if (!valid) {
       throw new InvalidCredentialsException();
     }
+    // Stateless bootstrap admin: hardcoded thick authority, no account row by design.
     return jwtService.issue(
         properties.email(),
         List.of(ADMIN_ROLE),

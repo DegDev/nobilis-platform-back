@@ -18,6 +18,7 @@ package io.github.degdev.engine.auth.adminlogin;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.github.degdev.engine.auth.account.AccountRepository;
 import io.github.degdev.engine.auth.account.Realm;
 import io.github.degdev.engine.auth.adminlogin.web.AdminLoginController;
 import io.github.degdev.engine.auth.password.PasswordAutoConfiguration;
@@ -117,10 +118,16 @@ class AdminLoginAutoConfigurationTest {
   }
 
   @Test
-  void enabledLoginIssuesAThickAdminToken() {
+  void configAdminIssuesThickTokenWithoutAnAccountRow() {
+    // No JPA or account persistence is loaded here — the config-admin is a deliberate stateless
+    // bootstrap path that mints a thick token from properties with no account row. The absent
+    // AccountRepository bean locks that: coupling admin login to a DB account would break this
+    // test.
     enabledRunner()
         .run(
             context -> {
+              assertThat(context).doesNotHaveBean(AccountRepository.class);
+
               AdminLoginService service = context.getBean(AdminLoginService.class);
               JwtService jwtService = context.getBean(JwtService.class);
 
