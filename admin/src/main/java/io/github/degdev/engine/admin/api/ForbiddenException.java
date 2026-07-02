@@ -13,12 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.degdev.engine.common.crypto;
+package io.github.degdev.engine.admin.api;
 
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
+/**
+ * Raised when an authenticated, admitted caller lacks the specific permission a handler requires.
+ * Thrown by {@link RequiresPermissionInterceptor} and mapped to an RFC 9457 {@code 403} by {@link
+ * GlobalExceptionHandler}. The message never names what was missing — it is not a capability
+ * oracle.
+ */
+public class ForbiddenException extends RuntimeException {
 
-/** Registers {@link CryptoProperties} so {@link CryptoService} can be constructed. */
-@Configuration
-@EnableConfigurationProperties(CryptoProperties.class)
-public class CryptoConfig {}
+  /** Creates the exception with a fixed, non-revealing message. */
+  public ForbiddenException() {
+    super("You do not have permission to perform this action");
+  }
+}

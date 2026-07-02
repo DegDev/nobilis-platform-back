@@ -4,10 +4,25 @@
 # placeholders with REAL values, then run the host with the local profile:
 #   mvn -pl admin spring-boot:run -Dspring-boot.run.profiles=local
 #
-# NEVER put a real key/hash in THIS .example file. Generate the JWT key with the engine's
+# NEVER put a real key/hash/password in THIS .example file. Generate the JWT key with the engine's
 # CryptoKeyGenerator and the BCrypt hash with the auth PasswordHasher (both at runtime).
 
 nobilis.auth.jwt.secret=${NOBILIS_AUTH_JWT_SECRET:<base64-256bit-key>}
 nobilis.auth.admin-login.enabled=true
 nobilis.auth.admin-login.email=admin@example.org
 nobilis.auth.admin-login.password-hash=<bcrypt-hash>
+
+# Enables common's crypto (CryptoService) in the host; omit it and crypto simply stays unmounted.
+nobilis.crypto.master-key=${NOBILIS_CRYPTO_MASTER_KEY:<base64-256bit-key>}
+
+# --- Turn the database ON for local dev -----------------------------------------------------------
+# The base application.properties excludes the DataSource/JPA/Flyway auto-configurations (stateless
+# default). Reset the list to EMPTY here to un-exclude them, then point at a dedicated dev Postgres
+# (never reuse another app's DB). Flyway applies the engine migrations (V1 setting, V2/V3 identity)
+# and ddl-auto=validate proves entity↔migration parity.
+spring.autoconfigure.exclude=
+spring.datasource.url=${NOBILIS_DB_URL:jdbc:postgresql://localhost:5432/nobilis}
+spring.datasource.username=${NOBILIS_DB_USERNAME:nobilis}
+spring.datasource.password=${NOBILIS_DB_PASSWORD:<db-password>}
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.open-in-view=false

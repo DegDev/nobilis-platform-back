@@ -15,19 +15,27 @@
  */
 package io.github.degdev.engine.common.i18n;
 
+import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.context.MessageSourceAutoConfiguration;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 
 /**
- * Static-message i18n. A {@link ReloadableResourceBundleMessageSource} over {@code
- * classpath:messages} resolves backend UI strings, falling back to the default {@code
- * messages.properties} bundle when a key is missing for the requested locale. The RU/RO bundles are
- * scaffolded now and populated at milestone {@code 05-i18n-static}.
+ * Static-message i18n, always on. Contributes the engine {@link MessageSource} over {@code
+ * classpath:messages} and the framework-agnostic {@link LocaleResolver}. Neither has an external
+ * requirement, so this mounts in every host (including the stateless admin host) as soon as {@code
+ * common} is on the classpath — the seam through which the {@code ?locale=} contract is served.
+ * Registered from {@code META-INF/spring/…AutoConfiguration.imports}.
+ *
+ * <p>Ordered {@code before} {@link MessageSourceAutoConfiguration} so the engine's message source
+ * (UTF-8, base-bundle fallback) wins and Boot's default backs off via its
+ * {@code @ConditionalOnMissingBean}. The locale-resolver bean is named {@code engineLocaleResolver}
+ * to avoid colliding with the servlet {@code localeResolver} bean Spring MVC contributes in web
+ * hosts.
  */
-@Configuration
-public class I18nConfig {
+@AutoConfiguration(before = MessageSourceAutoConfiguration.class)
+public class I18nAutoConfiguration {
 
   /**
    * The engine {@link MessageSource} over {@code classpath:messages}. Overrides Spring Boot's
@@ -44,5 +52,15 @@ public class I18nConfig {
     messageSource.setDefaultEncoding("UTF-8");
     messageSource.setFallbackToSystemLocale(false);
     return messageSource;
+  }
+
+  /**
+   * The framework-agnostic request-locale resolver for the {@code ?locale=} contract.
+   *
+   * @return the locale resolver
+   */
+  @Bean
+  public LocaleResolver engineLocaleResolver() {
+    return new LocaleResolver();
   }
 }

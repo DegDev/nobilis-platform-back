@@ -22,6 +22,9 @@ import io.github.degdev.engine.auth.adminlogin.web.AdminLoginController;
 import io.github.degdev.engine.auth.gate.JwtAuthenticationFilter;
 import io.github.degdev.engine.auth.password.PasswordHasher;
 import io.github.degdev.engine.common.crypto.CryptoKeyGenerator;
+import io.github.degdev.engine.common.crypto.CryptoService;
+import io.github.degdev.engine.common.i18n.LocaleResolver;
+import io.github.degdev.engine.common.persistence.SystemAuditorAware;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +37,9 @@ import org.springframework.test.context.DynamicPropertySource;
  * Proves the milestone-03 admin host boots as a STATELESS web application — with {@code common}'s
  * JPA/Flyway on the classpath but no database configured — because {@link AdminApplication}
  * excludes the DataSource/JPA/Flyway auto-configurations. Also asserts the opt-in auth wiring
- * mounts: the login endpoint, the gate mechanism, and the host contour policy.
+ * mounts (login endpoint, gate, contour policy) and that {@code common} now mounts via
+ * auto-configuration: its crypto and i18n beans are reachable in the host, while JPA auditing stays
+ * absent because the stateless host has no {@code EntityManagerFactory}.
  *
  * <p>All secrets are generated at runtime via {@link DynamicPropertySource}; no key or hash value
  * is ever written to a committed file.
@@ -52,6 +57,7 @@ class AdminApplicationTest {
     registry.add(
         "nobilis.auth.admin-login.password-hash",
         () -> new PasswordHasher().hash("s3cret-admin-pw"));
+    registry.add("nobilis.crypto.master-key", CryptoKeyGenerator::generateBase64Key);
   }
 
   @Test
@@ -64,5 +70,13 @@ class AdminApplicationTest {
     assertThat(context.getBeanNamesForType(AdminLoginController.class)).hasSize(1);
     assertThat(context.getBeanNamesForType(JwtAuthenticationFilter.class)).hasSize(1);
     assertThat(context.getBeanNamesForType(AdminContourFilter.class)).hasSize(1);
+  }
+
+  @Test
+  void mountsCommonCryptoAndI18nButNotAuditing() {
+    assertThat(context.getBeanNamesForType(CryptoService.class)).hasSize(1);
+    assertThat(context.getBeanNamesForType(LocaleResolver.class)).hasSize(1);
+    // Auditing needs a JPA EntityManagerFactory, which the stateless host excludes.
+    assertThat(context.getBeanNamesForType(SystemAuditorAware.class)).isEmpty();
   }
 }

@@ -15,30 +15,44 @@
  */
 package io.github.degdev.engine.admin;
 
+import io.github.degdev.engine.admin.settings.SettingsController;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.data.jpa.autoconfigure.DataJpaRepositoriesAutoConfiguration;
-import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
-import org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration;
-import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigurationExcludeFilter;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.context.TypeExcludeFilter;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.ComponentScan.Filter;
+import org.springframework.context.annotation.FilterType;
 
 /**
  * Boots the admin HTTP application.
  *
- * <p>This milestone-03 vertical slice is deliberately STATELESS. The {@code common} library drags
- * Spring Data JPA, Hibernate and Flyway onto the classpath, but the slice (admin login + the
- * contour policy + a placeholder screen) touches no database. Their auto-configurations are
- * excluded so the host boots without a running Postgres; persistence returns in a later pass. The
- * exclusions use the Spring Boot 4 module-split package names (e.g. {@code
- * org.springframework.boot.jdbc.autoconfigure}), not the pre-4 {@code
+ * <p>The host is STATELESS by default: {@code common} drags Spring Data JPA, Hibernate and Flyway
+ * onto the classpath, but the default configuration touches no database, so those
+ * auto-configurations are excluded and the host boots without a running Postgres. The exclusions
+ * live in {@code application.properties} as {@code spring.autoconfigure.exclude} precisely so a
+ * profile can turn persistence back on with a one-line override: {@code
+ * application-local.properties} resets the list to empty and supplies a datasource. Config flips
+ * the database on; no code change is needed. The excluded FQNs use the Spring Boot 4 module-split
+ * package names (e.g. {@code org.springframework.boot.jdbc.autoconfigure}), not the pre-4 {@code
  * org.springframework.boot.autoconfigure.*} ones.
+ *
+ * <p>This is {@code @SpringBootApplication} spelled out ({@code @SpringBootConfiguration} +
+ * {@code @EnableAutoConfiguration} + {@code @ComponentScan} with Boot's two standard exclude
+ * filters) for one reason: the extra exclude filter keeps {@link SettingsController} OUT of the
+ * component scan. That controller is a DB-only screen — it is registered as a {@code @Bean} by
+ * {@code SettingsWebAutoConfiguration} only when a settings store exists — so scanning it here
+ * would both mount it in the stateless host (where it has no service to inject, failing the boot)
+ * and clash with the conditional bean. Everything else scans as usual.
  */
-@SpringBootApplication(
-    exclude = {
-      DataSourceAutoConfiguration.class,
-      HibernateJpaAutoConfiguration.class,
-      DataJpaRepositoriesAutoConfiguration.class,
-      FlywayAutoConfiguration.class
+@SpringBootConfiguration
+@EnableAutoConfiguration
+@ComponentScan(
+    excludeFilters = {
+      @Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
+      @Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class),
+      @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = SettingsController.class)
     })
 public class AdminApplication {
 
