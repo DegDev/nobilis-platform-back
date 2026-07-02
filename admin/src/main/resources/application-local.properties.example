@@ -1,0 +1,13 @@
+# Local dev profile for the admin host — TEMPLATE (placeholders only, safe to commit).
+#
+# Copy to application-local.properties (gitignored via *-local.properties), replace the
+# placeholders with REAL values, then run the host with the local profile:
+#   mvn -pl admin spring-boot:run -Dspring-boot.run.profiles=local
+#
+# NEVER put a real key/hash in THIS .example file. Generate the JWT key with the engine's
+# CryptoKeyGenerator and the BCrypt hash with the auth PasswordHasher (both at runtime).
+
+nobilis.auth.jwt.secret=${NOBILIS_AUTH_JWT_SECRET:<base64-256bit-key>}
+nobilis.auth.admin-login.enabled=true
+nobilis.auth.admin-login.email=admin@example.org
+nobilis.auth.admin-login.password-hash=<bcrypt-hash>
