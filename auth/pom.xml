@@ -21,5 +21,78 @@
       <groupId>io.github.degdev</groupId>
       <artifactId>common</artifactId>
     </dependency>
+
+    <!-- Lombok: compile-time constructor injection (@RequiredArgsConstructor). Provided scope. -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+    </dependency>
+
+    <!--
+      Spring MVC (no embedded server): lets this library contribute @RestController endpoints that
+      the host application mounts. The runnable host (admin) brings spring-boot-starter-web.
+    -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-webmvc</artifactId>
+    </dependency>
+
+    <!-- BCrypt password hashing (Spring Security's crypto module, no full Security stack). -->
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-crypto</artifactId>
+    </dependency>
+
+    <!-- JSON for the hand-rolled HS256 JWT header/claims (RFC 7519). -->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+    </dependency>
+
+    <!-- @ConfigurationProperties metadata for IDE/tooling (does not ship at runtime). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-configuration-processor</artifactId>
+      <optional>true</optional>
+    </dependency>
+
+    <!-- Tests: JUnit 5 + AssertJ + Spring Boot test (ApplicationContextRunner, MockMvc). -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!--
+      Servlet API, provided scope: the inbound gate (JwtAuthenticationFilter extends
+      OncePerRequestFilter) references jakarta.servlet types at compile time, and the standalone
+      MockMvc slice needs them on the test classpath. spring-webmvc keeps jakarta.servlet provided
+      (not transitive), so it is declared here; the runnable host supplies the implementation.
+    -->
+    <dependency>
+      <groupId>jakarta.servlet</groupId>
+      <artifactId>jakarta.servlet-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!--
+      Testcontainers Postgres for the account persistence slice (Flyway + JPA against a real DB).
+      JPA/Flyway/driver come transitively (compile) from common; these test-scoped artifacts do not,
+      so they are declared here. Versions are managed by the Spring Boot BOM.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

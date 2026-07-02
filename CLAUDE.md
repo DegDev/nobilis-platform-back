@@ -61,6 +61,8 @@ Checkstyle, gated in CI before merge to dev. We don't rely on memory — tooling
   GitHub account DegDev — free). "platform" lives in the repo name, NOT in packages.
 - Standard Java naming: PascalCase types, camelCase members, UPPER_SNAKE_CASE constants.
 - Constructor injection. package-by-feature. Clear DTO/entity boundaries.
+- DB table naming: `entity_extra_fields` (entity first), avoid SQL-reserved names, `varchar` over
+  native Postgres enums — full rules in `docs/conventions.md`.
 
 ## Package structure — package-by-feature (CRITICAL, enforced)
 
@@ -119,6 +121,59 @@ a defect even if the build is green.
 - recon → spec → tasks → DoD. Milestone plans live in `.agent/plans/` (00-foundation … 07-domain-slice).
 - Before coding a milestone — a recon ticket: close remaining TBDs, record them in sources-log.
 - Each task is atomic and verifiable against its DoD.
+
+## Working principles
+
+How the agent works on every task — independent of the prompt's wording.
+
+- **Think before coding.** State assumptions; if a request has more than one reading, surface the
+  options instead of silently picking one. If a simpler approach exists, say so. When something is
+  unclear, **STOP**, name exactly what's unclear, and ask — don't guess.
+- **Simplicity first.** The minimum code that solves the task. No speculative features, abstractions,
+  configurability, or error handling for impossible cases that weren't asked for.
+- **Surgical changes.** Touch only what the task needs. Don't reformat, rename, or "improve"
+  neighbouring code; match the existing style even where you'd do it differently. Each changed line
+  must trace back to the request.
+- **Goal-driven.** Turn the task into a verifiable success criterion and loop until it's met
+  ("add validation" → write tests for bad input, then make them pass).
+
+## Commit gate
+
+The agent does **not** commit on its own. Finishing a task = **STOP + a short report** (files
+touched, result, what was verified) **+ a proposed commit message**. The user reviews and commits.
+This holds even when a specific prompt doesn't restate it; build/docs/fix prompts that repeat a
+"commit gate" line are only echoing this rule.
+
+## Branch discipline (CRITICAL, enforced)
+
+One branch per milestone (`01-common`, `02-auth`, `03-app-admin-shell`, ...), branched from
+`main`. **`main` is NEVER pushed to directly — all integration into `main` happens via a
+GitHub Pull Request (PR), even for a single-commit change.** Docs commits ride on whatever
+branch is current — universal, not milestone-locked.
+
+**Before running `git commit` for ANY reason**, verify the current branch matches the
+milestone/task actually being worked on by running `git branch --show-current`.
+- If the current branch does NOT match what's being worked on — **STOP. Do not commit.**
+  Report the mismatch, ask whether to switch or whether it's intentional.
+- **Never `git push origin main`.** If work needs to land on `main`, open a PR from the
+  current branch and stop — the user merges it (or explicitly asks the agent to via `gh pr
+  merge`).
+
+**On the remote:** merge PRs via "Squash and merge" or "Rebase and merge", NOT the default
+"Merge pull request" — the latter creates a merge commit that breaks linear history.
+
+**Upstream tracking — a feature branch tracks its namesake, NEVER `main`.**
+- A feature branch's upstream is ALWAYS its namesake on `origin` (`origin/<same-branch-name>`),
+  NEVER `main` or any integration branch. First push: `git push -u origin <branch>`.
+- When creating a branch FROM main (`git checkout -b <new> main`), do NOT inherit main's
+  tracking. The new branch must track `origin/<new>` (created on first push), not `origin/main`.
+  If `git status` shows the new branch tracking main/an integration branch, that's a
+  misconfiguration — fix with `git branch --unset-upstream` then `git push -u origin <branch>`.
+- **NEVER `git push` while a feature branch's upstream points at main/an integration branch** —
+  that pushes your commits straight into it, bypassing the PR gate. Verify with
+  `git rev-parse --abbrev-ref @{upstream}` if unsure; it must read `origin/<same-name>`.
+- Integration into `main` is via PR only (see the PR-only rule above); the upstream link never
+  changes that.
 
 ## MCP servers — mandatory usage
 

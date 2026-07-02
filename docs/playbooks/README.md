@@ -12,13 +12,20 @@ Index line format: `` - `<name>.md` — <when to apply (trigger / task class)> [
 A playbook is written **after** the first real example, not before. An empty playbook written on
 guesses will need rewriting after the first implementation. Everything below is **[anticipated]** —
 the task class we expect to recur — and becomes **[ready]** only once we've built one real instance
-and captured the pattern from it. (This is why nothing is `[ready]` yet: no features exist.)
+and captured the pattern from it. (The first `[ready]` one, `lombok-conventions.md`, was extracted
+from the 01-common / 02-auth code — not predicted; the rest stay `[anticipated]` until built.)
 
 ## Paired (fullstack) playbooks
 
 Fullstack playbooks are split into back/front parts so the two repos don't drift through
 duplication. The frontend parts live in `nobilis-platform-front/docs/playbooks/` with a mutual link
 inside each file. The contract (DTOs, endpoints) is the seam between the pair.
+
+## Backend playbooks (ready)
+
+- `lombok-conventions.md` — before creating/editing any data class, DTO, entity, or service: which
+  Lombok annotations (and when a `record` or a hand-written constructor is right instead). Backend
+  only (Lombok is JVM-only). **[ready]**
 
 ## Backend playbooks (anticipated)
 
@@ -49,5 +56,6 @@ inside each file. The contract (DTOs, endpoints) is the seam between the pair.
 - `recon-first.md` — recon before touching coupled or risky code; refactor hot code as a separate,
   tested task, never as a drive-by. Process playbook, both sides. **[anticipated]**
 
-> All entries are anticipated classes, not yet written. The first real playbook is captured at
-> milestone `03`, extracted from the first feature we build — not predicted here.
+> The remaining entries are anticipated classes, not yet written — each captured from the first real
+> feature that exercises it, not predicted here. The first captured one is `lombok-conventions.md`
+> above, extracted from the 01-common / 02-auth code.
