@@ -162,6 +162,19 @@ milestone/task actually being worked on by running `git branch --show-current`.
 **On the remote:** merge PRs via "Squash and merge" or "Rebase and merge", NOT the default
 "Merge pull request" — the latter creates a merge commit that breaks linear history.
 
+**Upstream tracking — a feature branch tracks its namesake, NEVER `main`.**
+- A feature branch's upstream is ALWAYS its namesake on `origin` (`origin/<same-branch-name>`),
+  NEVER `main` or any integration branch. First push: `git push -u origin <branch>`.
+- When creating a branch FROM main (`git checkout -b <new> main`), do NOT inherit main's
+  tracking. The new branch must track `origin/<new>` (created on first push), not `origin/main`.
+  If `git status` shows the new branch tracking main/an integration branch, that's a
+  misconfiguration — fix with `git branch --unset-upstream` then `git push -u origin <branch>`.
+- **NEVER `git push` while a feature branch's upstream points at main/an integration branch** —
+  that pushes your commits straight into it, bypassing the PR gate. Verify with
+  `git rev-parse --abbrev-ref @{upstream}` if unsure; it must read `origin/<same-name>`.
+- Integration into `main` is via PR only (see the PR-only rule above); the upstream link never
+  changes that.
+
 ## MCP servers — mandatory usage
 
 This project runs Claude Code from VSCode against BOTH repos (`nobilis-platform-back`,
