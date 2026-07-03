@@ -82,6 +82,27 @@ public class Role extends BaseEntity {
     this.permissions.add(permission);
   }
 
+  /**
+   * Revokes a permission from this role (idempotent — a no-op if not granted).
+   *
+   * @param permission the permission constant's value (see {@link EnginePermissions})
+   */
+  public void removePermission(String permission) {
+    this.permissions.remove(permission);
+  }
+
+  /**
+   * Replaces this role's permissions with the given set in one operation. Mutates the managed
+   * collection in place (clear + add) rather than reassigning it, so Hibernate's dirty-tracking and
+   * the {@code role_permission} join stay correct.
+   *
+   * @param newPermissions the new, complete set of permission values
+   */
+  public void replacePermissions(Set<String> newPermissions) {
+    this.permissions.clear();
+    this.permissions.addAll(newPermissions);
+  }
+
   /** {@return an unmodifiable view of this role's permissions} */
   public Set<String> getPermissions() {
     return Set.copyOf(permissions);

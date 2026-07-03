@@ -18,9 +18,11 @@ package io.github.degdev.engine.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.degdev.engine.admin.security.AdminContourFilter;
+import io.github.degdev.engine.auth.account.AccountRepository;
 import io.github.degdev.engine.auth.adminlogin.web.AdminLoginController;
 import io.github.degdev.engine.auth.gate.JwtAuthenticationFilter;
 import io.github.degdev.engine.auth.password.PasswordHasher;
+import io.github.degdev.engine.auth.role.RoleRepository;
 import io.github.degdev.engine.common.crypto.CryptoKeyGenerator;
 import io.github.degdev.engine.common.crypto.CryptoService;
 import io.github.degdev.engine.common.i18n.LocaleResolver;
@@ -78,5 +80,14 @@ class AdminApplicationTest {
     assertThat(context.getBeanNamesForType(LocaleResolver.class)).hasSize(1);
     // Auditing needs a JPA EntityManagerFactory, which the stateless host excludes.
     assertThat(context.getBeanNamesForType(SystemAuditorAware.class)).isEmpty();
+  }
+
+  @Test
+  void doesNotMountAuthRepositoriesWithoutADatabase() {
+    // AuthPersistenceAutoConfiguration registers auth's package unconditionally, but with no
+    // EntityManagerFactory nothing scans it — the account/role repositories never become beans,
+    // so the stateless host stays clean.
+    assertThat(context.getBeanNamesForType(AccountRepository.class)).isEmpty();
+    assertThat(context.getBeanNamesForType(RoleRepository.class)).isEmpty();
   }
 }
