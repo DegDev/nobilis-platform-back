@@ -21,7 +21,7 @@ nobilis.crypto.master-key=${NOBILIS_CRYPTO_MASTER_KEY:<base64-256bit-key>}
 # (never reuse another app's DB). Flyway applies the engine migrations (V1 setting, V2/V3 identity)
 # and ddl-auto=validate proves entity↔migration parity.
 spring.autoconfigure.exclude=
-spring.datasource.url=${NOBILIS_DB_URL:jdbc:postgresql://localhost:5432/nobilis}
+spring.datasource.url=${NOBILIS_DB_URL:jdbc:postgresql://localhost:5433/nobilis}
 spring.datasource.username=${NOBILIS_DB_USERNAME:nobilis}
 spring.datasource.password=${NOBILIS_DB_PASSWORD:<db-password>}
 spring.jpa.hibernate.ddl-auto=validate
