@@ -15,6 +15,8 @@
  */
 package io.github.degdev.engine.admin.api;
 
+import io.github.degdev.engine.auth.role.RoleConflictException;
+import io.github.degdev.engine.auth.role.UnknownPermissionException;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -41,6 +43,9 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  *       form can map each message to its field.
  *   <li>{@link NotFoundException} &rarr; {@code 404}.
  *   <li>{@link ForbiddenException} (missing permission, from the interceptor) &rarr; {@code 403}.
+ *   <li>{@link RoleConflictException} (duplicate code, or a role still in use) &rarr; {@code 409}.
+ *   <li>{@link UnknownPermissionException} (a role given an undefined permission) &rarr; {@code
+ *       400}.
  *   <li>Anything else &rarr; {@code 500} with a generic detail (the real cause is logged, never
  *       leaked to the client).
  * </ul>
@@ -95,6 +100,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(ForbiddenException.class)
   public ProblemDetail handleForbidden(ForbiddenException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+  }
+
+  /**
+   * Maps a state conflict — a duplicate role code, or a role still assigned to accounts — to {@code
+   * 409}.
+   *
+   * @param ex the conflict signal
+   * @return a {@code 409} problem detail naming the blocker
+   */
+  @ExceptionHandler(RoleConflictException.class)
+  public ProblemDetail handleConflict(RoleConflictException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+  }
+
+  /**
+   * Maps a request naming a permission the engine does not define to {@code 400}.
+   *
+   * @param ex the unknown-permission signal
+   * @return a {@code 400} problem detail naming the offending permissions
+   */
+  @ExceptionHandler(UnknownPermissionException.class)
+  public ProblemDetail handleUnknownPermission(UnknownPermissionException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
   }
 
   /**

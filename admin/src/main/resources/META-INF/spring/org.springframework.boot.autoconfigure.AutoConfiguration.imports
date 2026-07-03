@@ -1,1 +1,2 @@
 io.github.degdev.engine.admin.settings.SettingsWebAutoConfiguration
+io.github.degdev.engine.admin.roles.RoleAdminAutoConfiguration

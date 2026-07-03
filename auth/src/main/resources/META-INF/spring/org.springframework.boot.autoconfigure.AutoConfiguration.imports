@@ -3,3 +3,4 @@ io.github.degdev.engine.auth.password.PasswordAutoConfiguration
 io.github.degdev.engine.auth.adminlogin.AdminLoginAutoConfiguration
 io.github.degdev.engine.auth.gate.GateAutoConfiguration
 io.github.degdev.engine.auth.persistence.AuthPersistenceAutoConfiguration
+io.github.degdev.engine.auth.role.RoleServiceAutoConfiguration

@@ -17,12 +17,14 @@ package io.github.degdev.engine.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.degdev.engine.admin.roles.RoleController;
 import io.github.degdev.engine.admin.security.AdminContourFilter;
 import io.github.degdev.engine.auth.account.AccountRepository;
 import io.github.degdev.engine.auth.adminlogin.web.AdminLoginController;
 import io.github.degdev.engine.auth.gate.JwtAuthenticationFilter;
 import io.github.degdev.engine.auth.password.PasswordHasher;
 import io.github.degdev.engine.auth.role.RoleRepository;
+import io.github.degdev.engine.auth.role.RoleService;
 import io.github.degdev.engine.common.crypto.CryptoKeyGenerator;
 import io.github.degdev.engine.common.crypto.CryptoService;
 import io.github.degdev.engine.common.i18n.LocaleResolver;
@@ -89,5 +91,14 @@ class AdminApplicationTest {
     // so the stateless host stays clean.
     assertThat(context.getBeanNamesForType(AccountRepository.class)).isEmpty();
     assertThat(context.getBeanNamesForType(RoleRepository.class)).isEmpty();
+  }
+
+  @Test
+  void doesNotMountTheRolesApiWithoutAStore() {
+    // No EntityManagerFactory → no RoleService (RoleServiceAutoConfiguration is gated on it) → no
+    // RoleController (RoleAdminAutoConfiguration is gated on the service). The DB-enabled host gets
+    // both, proven by RolesCrudIntegrationTest.
+    assertThat(context.getBeanNamesForType(RoleService.class)).isEmpty();
+    assertThat(context.getBeanNamesForType(RoleController.class)).isEmpty();
   }
 }

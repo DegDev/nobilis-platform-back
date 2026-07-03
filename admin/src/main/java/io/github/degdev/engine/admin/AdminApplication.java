@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.admin;
 
+import io.github.degdev.engine.admin.roles.RoleController;
 import io.github.degdev.engine.admin.settings.SettingsController;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.SpringBootConfiguration;
@@ -40,11 +41,11 @@ import org.springframework.context.annotation.FilterType;
  *
  * <p>This is {@code @SpringBootApplication} spelled out ({@code @SpringBootConfiguration} +
  * {@code @EnableAutoConfiguration} + {@code @ComponentScan} with Boot's two standard exclude
- * filters) for one reason: the extra exclude filter keeps {@link SettingsController} OUT of the
- * component scan. That controller is a DB-only screen — it is registered as a {@code @Bean} by
- * {@code SettingsWebAutoConfiguration} only when a settings store exists — so scanning it here
- * would both mount it in the stateless host (where it has no service to inject, failing the boot)
- * and clash with the conditional bean. Everything else scans as usual.
+ * filters) for one reason: the extra exclude filter keeps the DB-only screens ({@link
+ * SettingsController}, {@link RoleController}) OUT of the component scan. Each is registered as a
+ * {@code @Bean} by its web auto-configuration only when its store exists — so scanning them here
+ * would both mount them in the stateless host (where they have no service to inject, failing the
+ * boot) and clash with the conditional bean. Everything else scans as usual.
  */
 @SpringBootConfiguration
 @EnableAutoConfiguration
@@ -52,7 +53,9 @@ import org.springframework.context.annotation.FilterType;
     excludeFilters = {
       @Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
       @Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class),
-      @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = SettingsController.class)
+      @Filter(
+          type = FilterType.ASSIGNABLE_TYPE,
+          classes = {SettingsController.class, RoleController.class})
     })
 public class AdminApplication {
 

@@ -17,6 +17,8 @@ package io.github.degdev.engine.auth.role;
 
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /** Spring Data repository for {@link Role} aggregates. */
 public interface RoleRepository extends JpaRepository<Role, Long> {
@@ -28,4 +30,16 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
    * @return the matching role, or empty if none
    */
   Optional<Role> findByCode(String code);
+
+  /**
+   * Counts the accounts currently assigned the given role — used to guard deletion against the
+   * {@code account_role} foreign key ({@code NO ACTION}). The JPQL walks the join from the {@code
+   * Account} side (which owns the {@code @ManyToMany}), so this needs no compile-time dependency on
+   * the account package.
+   *
+   * @param role the role to check for references
+   * @return the number of accounts holding the role
+   */
+  @Query("select count(a) from Account a join a.roles r where r = :role")
+  long countAssignedAccounts(@Param("role") Role role);
 }
