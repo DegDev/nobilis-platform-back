@@ -88,22 +88,13 @@ in a layer bucket because it's "easier" is a defect; put it in its feature.
 
 ## Secrets — never hardcode keys (CRITICAL, enforced)
 
-NO key, secret, password, or token value is EVER written into a committed file —
-not in source, not in resources, not in test resources, not in YAML/properties,
-not in a Javadoc example. This includes the crypto master key, bank credentials,
-Telegram/SMS tokens, JWT secrets — any credential.
-
-ALLOWED in committed files: the NAME of a property (`nobilis.crypto.master-key`),
-env-var placeholders (`${NOBILIS_CRYPTO_MASTER_KEY}`), and clearly-fake structural
-samples in *.example files.
-
-FORBIDDEN: a real or real-shaped value after `=` or `:` for any key/secret/password/
-token, in ANY committed file including test resources. Tests that need a key generate
-a fresh one at runtime (e.g. @DynamicPropertySource), never read it from a committed file.
-
-This is not a discipline rule — it's gated. A pre-commit hook + CI secret-scan
-(gitleaks) blocks any commit/merge carrying a secret-shaped value. A key in a file is
-a defect even if the build is green.
+No key/secret/password/token value is EVER written into a committed file — including source, test
+resources, YAML/properties, and doc examples.
+- ALLOWED: the NAME of a property (`nobilis.crypto.master-key`), env placeholders
+  (`${NOBILIS_CRYPTO_MASTER_KEY}`), clearly-fake samples in `*.example` files.
+- FORBIDDEN: a real or real-shaped value after `=`/`:` for any credential, in any committed file.
+  Tests generate keys at runtime (e.g. @DynamicPropertySource), never read them from a file.
+Gated by the gitleaks pre-commit hook + CI secret-scan — a key in a file is a defect even if green.
 
 ## IP / clean-room (important — public open-source)
 
@@ -121,6 +112,10 @@ a defect even if the build is green.
 - recon → spec → tasks → DoD. Milestone plans live in `.agent/plans/` (00-foundation … 07-domain-slice).
 - Before coding a milestone — a recon ticket: close remaining TBDs, record them in sources-log.
 - Each task is atomic and verifiable against its DoD.
+- Prompt taxonomy + recon-first standard: `docs/process/prompting-methodology.md`.
+- When compacting, always preserve: current milestone/pass state, modified-files list, verify
+  commands, locked decisions.
+- Recurring engine patterns become on-demand skills in `.claude/skills/`, not new CLAUDE.md prose.
 
 ## Working principles
 
@@ -136,6 +131,11 @@ How the agent works on every task — independent of the prompt's wording.
   must trace back to the request.
 - **Goal-driven.** Turn the task into a verifiable success criterion and loop until it's met
   ("add validation" → write tests for bad input, then make them pass).
+- **Context economy.** Exploratory or multi-file investigation runs in the `recon` subagent, which
+  returns a compressed `file:line` summary marked "recon-confirmed — do not re-verify" — don't refill
+  the main window with raw file dumps. Single-symbol lookups inline are fine.
+- **Don't spin.** Do not silently retry a failing build/test/tool more than 3 times — STOP, report
+  what's stuck and what was tried.
 
 ## Commit gate
 
@@ -144,36 +144,27 @@ touched, result, what was verified) **+ a proposed commit message**. The user re
 This holds even when a specific prompt doesn't restate it; build/docs/fix prompts that repeat a
 "commit gate" line are only echoing this rule.
 
+## Default DoD (every task, before STOP)
+
+The run-through before finishing any task (sections above hold the detail; this is the checklist):
+- [ ] Build green — `mvn -B verify` (Spotless + Checkstyle + build + tests).
+- [ ] Tests green.
+- [ ] UI changes (front) verified in the running browser via playwright — N/A for backend-only tasks.
+- [ ] i18n in the same change where user-visible strings are added (front).
+- [ ] No hardcoded secrets (the gitleaks pre-commit hook also gates this).
+- [ ] Correct branch — `git branch --show-current` matches the milestone/task.
+- [ ] sources-log updated for any non-trivial decision.
+- [ ] STOP + short report (files touched, result, what was verified) + proposed commit message.
+
 ## Branch discipline (CRITICAL, enforced)
 
-One branch per milestone (`01-common`, `02-auth`, `03-app-admin-shell`, ...), branched from
-`main`. **`main` is NEVER pushed to directly — all integration into `main` happens via a
-GitHub Pull Request (PR), even for a single-commit change.** Docs commits ride on whatever
-branch is current — universal, not milestone-locked.
-
-**Before running `git commit` for ANY reason**, verify the current branch matches the
-milestone/task actually being worked on by running `git branch --show-current`.
-- If the current branch does NOT match what's being worked on — **STOP. Do not commit.**
-  Report the mismatch, ask whether to switch or whether it's intentional.
-- **Never `git push origin main`.** If work needs to land on `main`, open a PR from the
-  current branch and stop — the user merges it (or explicitly asks the agent to via `gh pr
-  merge`).
-
-**On the remote:** merge PRs via "Squash and merge" or "Rebase and merge", NOT the default
-"Merge pull request" — the latter creates a merge commit that breaks linear history.
-
-**Upstream tracking — a feature branch tracks its namesake, NEVER `main`.**
-- A feature branch's upstream is ALWAYS its namesake on `origin` (`origin/<same-branch-name>`),
-  NEVER `main` or any integration branch. First push: `git push -u origin <branch>`.
-- When creating a branch FROM main (`git checkout -b <new> main`), do NOT inherit main's
-  tracking. The new branch must track `origin/<new>` (created on first push), not `origin/main`.
-  If `git status` shows the new branch tracking main/an integration branch, that's a
-  misconfiguration — fix with `git branch --unset-upstream` then `git push -u origin <branch>`.
-- **NEVER `git push` while a feature branch's upstream points at main/an integration branch** —
-  that pushes your commits straight into it, bypassing the PR gate. Verify with
-  `git rev-parse --abbrev-ref @{upstream}` if unsure; it must read `origin/<same-name>`.
-- Integration into `main` is via PR only (see the PR-only rule above); the upstream link never
-  changes that.
+One branch per milestone (`01-common`, `02-auth`, `03-app-admin-shell`, …), branched from `main`.
+`main` is NEVER pushed to directly — integration is via a GitHub PR only, even for one commit
+(merge with "Squash and merge"/"Rebase and merge", never a merge commit). A feature branch's
+upstream is ALWAYS its namesake `origin/<same-name>`, never `main`/an integration branch (first
+push: `git push -u origin <branch>`). Run `git branch --show-current` before any commit.
+Docs commits ride the current branch. Enforced physically by the `pre-commit`/`pre-push` hooks in
+`.githooks/` — they gate the human too.
 
 ## MCP servers — mandatory usage
 
