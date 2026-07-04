@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.auth.account;
 
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -30,4 +31,13 @@ public interface AccountIdentityRepository extends JpaRepository<AccountIdentity
    */
   Optional<AccountIdentity> findByProviderTypeAndExternalId(
       ProviderType providerType, String externalId);
+
+  /**
+   * Lists the identities bound to an account — used to project an account's provider bindings into
+   * its admin read-model (never the secret hash).
+   *
+   * @param account the owning account
+   * @return the account's identities, in no particular order
+   */
+  List<AccountIdentity> findByAccount(Account account);
 }

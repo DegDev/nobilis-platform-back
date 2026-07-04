@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.admin;
 
+import io.github.degdev.engine.admin.accounts.AccountController;
 import io.github.degdev.engine.admin.roles.RoleController;
 import io.github.degdev.engine.admin.settings.SettingsController;
 import org.springframework.boot.SpringApplication;
@@ -42,10 +43,11 @@ import org.springframework.context.annotation.FilterType;
  * <p>This is {@code @SpringBootApplication} spelled out ({@code @SpringBootConfiguration} +
  * {@code @EnableAutoConfiguration} + {@code @ComponentScan} with Boot's two standard exclude
  * filters) for one reason: the extra exclude filter keeps the DB-only screens ({@link
- * SettingsController}, {@link RoleController}) OUT of the component scan. Each is registered as a
- * {@code @Bean} by its web auto-configuration only when its store exists — so scanning them here
- * would both mount them in the stateless host (where they have no service to inject, failing the
- * boot) and clash with the conditional bean. Everything else scans as usual.
+ * SettingsController}, {@link RoleController}, {@link AccountController}) OUT of the component
+ * scan. Each is registered as a {@code @Bean} by its web auto-configuration only when its store
+ * exists — so scanning them here would both mount them in the stateless host (where they have no
+ * service to inject, failing the boot) and clash with the conditional bean. Everything else scans
+ * as usual.
  */
 @SpringBootConfiguration
 @EnableAutoConfiguration
@@ -55,7 +57,7 @@ import org.springframework.context.annotation.FilterType;
       @Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class),
       @Filter(
           type = FilterType.ASSIGNABLE_TYPE,
-          classes = {SettingsController.class, RoleController.class})
+          classes = {SettingsController.class, RoleController.class, AccountController.class})
     })
 public class AdminApplication {
 

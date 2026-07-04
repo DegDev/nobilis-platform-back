@@ -17,9 +17,11 @@ package io.github.degdev.engine.admin;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.degdev.engine.admin.accounts.AccountController;
 import io.github.degdev.engine.admin.roles.RoleController;
 import io.github.degdev.engine.admin.security.AdminContourFilter;
 import io.github.degdev.engine.auth.account.AccountRepository;
+import io.github.degdev.engine.auth.account.AccountService;
 import io.github.degdev.engine.auth.adminlogin.web.AdminLoginController;
 import io.github.degdev.engine.auth.gate.JwtAuthenticationFilter;
 import io.github.degdev.engine.auth.password.PasswordHasher;
@@ -100,5 +102,15 @@ class AdminApplicationTest {
     // both, proven by RolesCrudIntegrationTest.
     assertThat(context.getBeanNamesForType(RoleService.class)).isEmpty();
     assertThat(context.getBeanNamesForType(RoleController.class)).isEmpty();
+  }
+
+  @Test
+  void doesNotMountTheAccountsApiWithoutAStore() {
+    // Same gating as roles: no EntityManagerFactory → no AccountService
+    // (AccountServiceAutoConfiguration is gated on it) → no AccountController
+    // (AccountAdminAutoConfiguration is gated on the service). The DB-enabled host gets both,
+    // proven by AccountsCrudIntegrationTest.
+    assertThat(context.getBeanNamesForType(AccountService.class)).isEmpty();
+    assertThat(context.getBeanNamesForType(AccountController.class)).isEmpty();
   }
 }

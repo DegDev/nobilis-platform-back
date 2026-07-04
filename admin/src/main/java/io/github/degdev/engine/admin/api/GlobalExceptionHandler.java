@@ -15,6 +15,8 @@
  */
 package io.github.degdev.engine.admin.api;
 
+import io.github.degdev.engine.auth.account.UnknownRealmException;
+import io.github.degdev.engine.auth.account.UnknownRoleException;
 import io.github.degdev.engine.auth.role.RoleConflictException;
 import io.github.degdev.engine.auth.role.UnknownPermissionException;
 import java.util.List;
@@ -46,6 +48,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  *   <li>{@link RoleConflictException} (duplicate code, or a role still in use) &rarr; {@code 409}.
  *   <li>{@link UnknownPermissionException} (a role given an undefined permission) &rarr; {@code
  *       400}.
+ *   <li>{@link UnknownRealmException} / {@link UnknownRoleException} (an account update naming an
+ *       undefined realm or an unknown role id) &rarr; {@code 400}.
  *   <li>Anything else &rarr; {@code 500} with a generic detail (the real cause is logged, never
  *       leaked to the client).
  * </ul>
@@ -122,6 +126,28 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(UnknownPermissionException.class)
   public ProblemDetail handleUnknownPermission(UnknownPermissionException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  /**
+   * Maps an account update naming a realm the engine does not define to {@code 400}.
+   *
+   * @param ex the unknown-realm signal
+   * @return a {@code 400} problem detail naming the offending realms
+   */
+  @ExceptionHandler(UnknownRealmException.class)
+  public ProblemDetail handleUnknownRealm(UnknownRealmException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  /**
+   * Maps an account update referencing a role id that resolves to no role to {@code 400}.
+   *
+   * @param ex the unknown-role signal
+   * @return a {@code 400} problem detail naming the offending role ids
+   */
+  @ExceptionHandler(UnknownRoleException.class)
+  public ProblemDetail handleUnknownRole(UnknownRoleException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
   }
 
