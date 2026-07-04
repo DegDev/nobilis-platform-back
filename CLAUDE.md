@@ -54,8 +54,9 @@ Extension is via extension points / interfaces / bean registration. **Contracts,
 
 ## Code conventions
 
-Full set — in `docs/conventions.md`. Machine enforcement: Spotless + google-java-format +
-Checkstyle, gated in CI before merge to dev. We don't rely on memory — tooling guarantees format.
+Full set — in `docs/conventions.md`. Formatting is enforced deterministically by a PostToolUse hook
+(google-java-format for *.java, prettier for web assets) — see `.claude/hooks/format-file.sh` and
+`docs/sources-log.md`; CI Spotless remains the backstop.
 
 - Package: `io.github.degdev.engine.*` (groupId `io.github.degdev`, verified namespace via the
   GitHub account DegDev — free). "platform" lives in the repo name, NOT in packages.
