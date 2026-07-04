@@ -1,0 +1,45 @@
+#!/usr/bin/env sh
+#
+# nobilis-platform pre-push gate — enforce branch discipline physically, for humans
+# and agents alike (a git hook gates the person; a Claude-settings hook would not).
+#
+# Mirrors CLAUDE.md "Branch discipline":
+#   (a) main is integrated via a GitHub Pull Request only — never a direct push.
+#   (b) a feature branch tracks its namesake (origin/<same-name>), never main or an
+#       integration branch — otherwise a push would bypass the PR gate. The first
+#       'git push -u origin <branch>' (no upstream yet) is how the namesake link is
+#       set, so it is allowed.
+#
+# One-time setup per clone (committed hooks are not auto-enabled by git):
+#     git config core.hooksPath .githooks
+set -eu
+
+# (a) Refuse any push whose DESTINATION ref is main, however it is spelled
+#     (git push origin main, HEAD:main, feature:main, :main …). git feeds one line
+#     per ref on stdin: "<local ref> <local sha> <remote ref> <remote sha>".
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  [ -z "${remote_ref:-}" ] && continue
+  case "$remote_ref" in
+    refs/heads/main)
+      echo "pre-push: BLOCKED — refusing to push to main." >&2
+      echo "pre-push: main is integrated via a GitHub Pull Request only, never a direct" >&2
+      echo "pre-push: push (branch discipline). Open a PR from your feature branch." >&2
+      exit 1
+      ;;
+  esac
+done
+
+# (b) The current branch's upstream, if already set, must be its namesake on origin.
+#     No upstream yet → this is the first 'push -u origin <branch>' setting it → allow.
+branch="$(git symbolic-ref --short -q HEAD || true)"
+if [ -n "$branch" ] && upstream="$(git rev-parse --abbrev-ref "@{upstream}" 2>/dev/null)"; then
+  if [ "$upstream" != "origin/$branch" ]; then
+    echo "pre-push: BLOCKED — branch '$branch' tracks '$upstream', not 'origin/$branch'." >&2
+    echo "pre-push: a feature branch must track its namesake (origin/$branch), never main" >&2
+    echo "pre-push: or an integration branch — else a push bypasses the PR gate" >&2
+    echo "pre-push: (branch discipline). Fix: git branch --unset-upstream && git push -u origin $branch" >&2
+    exit 1
+  fi
+fi
+
+exit 0

@@ -18,7 +18,6 @@ package io.github.degdev.engine.common.i18n;
 import java.util.Locale;
 import java.util.Set;
 import org.springframework.lang.Nullable;
-import org.springframework.stereotype.Component;
 
 /**
  * Resolves the request locale per the back↔front contract: transport is the {@code ?locale=<code>}
@@ -29,9 +28,8 @@ import org.springframework.stereotype.Component;
  * <p>Deliberately framework-agnostic (a plain component taking a {@code String}, not a Servlet
  * {@code LocaleResolver}) so {@code common} stays free of any web dependency. The web modules bind
  * the query parameter to {@link #resolve(String)} when the first real endpoint appears (milestone
- * {@code 02}/{@code 03}).
+ * {@code 02}/{@code 03}). Instantiated as a {@code @Bean} by {@link I18nAutoConfiguration}.
  */
-@Component
 public class LocaleResolver {
 
   /** Single source of truth for the engine default locale, mirrored by the front locale service. */

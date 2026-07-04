@@ -9,6 +9,14 @@
 # cannot be trusted without it. Install: https://github.com/gitleaks/gitleaks
 set -eu
 
+# Branch discipline: main is integrated via a GitHub Pull Request only — never a
+# direct commit. Block any commit made while main is the checked-out branch.
+if [ "$(git branch --show-current)" = "main" ]; then
+  echo "pre-commit: BLOCKED — commits to main are forbidden — integrate via PR (branch discipline)." >&2
+  echo "pre-commit: commit on a feature branch (one per milestone), then open a PR into main." >&2
+  exit 1
+fi
+
 if ! command -v gitleaks >/dev/null 2>&1; then
   echo "pre-commit: gitleaks not found on PATH — the secret-scan gate cannot run." >&2
   echo "pre-commit: install gitleaks (https://github.com/gitleaks/gitleaks) then retry." >&2

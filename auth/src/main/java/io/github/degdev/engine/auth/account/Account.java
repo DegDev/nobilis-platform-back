@@ -94,6 +94,27 @@ public class Account extends BaseEntity {
     this.realms.add(realm);
   }
 
+  /**
+   * Revokes a realm from this account (idempotent — a no-op if the realm is not held).
+   *
+   * @param realm the realm to remove
+   */
+  public void removeRealm(Realm realm) {
+    this.realms.remove(realm);
+  }
+
+  /**
+   * Replaces this account's realms with the given set in one operation. Mutates the managed
+   * collection in place (clear + add) rather than reassigning it, so Hibernate's dirty-tracking and
+   * the {@code account_realm} join stay correct.
+   *
+   * @param newRealms the new, complete set of realms
+   */
+  public void replaceRealms(Set<Realm> newRealms) {
+    this.realms.clear();
+    this.realms.addAll(newRealms);
+  }
+
   /** {@return an unmodifiable view of this account's realms} */
   public Set<Realm> getRealms() {
     return Set.copyOf(realms);
@@ -106,6 +127,27 @@ public class Account extends BaseEntity {
    */
   public void addRole(Role role) {
     this.roles.add(role);
+  }
+
+  /**
+   * Revokes a role from this account (idempotent — a no-op if the role is not assigned).
+   *
+   * @param role the role to remove
+   */
+  public void removeRole(Role role) {
+    this.roles.remove(role);
+  }
+
+  /**
+   * Replaces this account's roles with the given set in one operation. Mutates the managed
+   * collection in place (clear + add) rather than reassigning it, so Hibernate's dirty-tracking and
+   * the {@code account_role} join stay correct.
+   *
+   * @param newRoles the new, complete set of roles
+   */
+  public void replaceRoles(Set<Role> newRoles) {
+    this.roles.clear();
+    this.roles.addAll(newRoles);
   }
 
   /** {@return an unmodifiable view of this account's roles} */

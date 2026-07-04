@@ -17,7 +17,6 @@ package io.github.degdev.engine.common.crypto;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 /**
@@ -28,8 +27,11 @@ import org.springframework.util.StringUtils;
  * key/algorithm rotation introduce a {@code v2:} scheme while still recognising (and rejecting)
  * older payloads. Decryption is explicit and called at the use site, keeping plaintext secrets out
  * of entity memory except exactly when needed.
+ *
+ * <p>Instantiated by {@link CryptoAutoConfiguration} as a {@code @Bean} (not a component-scanned
+ * {@code @Service}) so a host mounting {@code common} via auto-configuration gets it without
+ * scanning {@code io.github.degdev.engine.common}.
  */
-@Service
 public class CryptoService {
 
   static final String VERSION_PREFIX = "v1:";

@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.degdev.engine.common.persistence;
+package io.github.degdev.engine.admin.settings;
 
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import jakarta.validation.constraints.Size;
 
 /**
- * Enables JPA auditing so {@code @CreatedDate}/{@code @LastModifiedDate} on {@code BaseEntity} are
- * populated automatically. The auditor reference points at {@code systemAuditorAware}, a stub that
- * is ready for {@code created_by}/{@code updated_by} once those land in milestone {@code 02-auth}.
+ * Request body to update a setting's value and secrecy at a known key (the key comes from the
+ * path). The {@code value} is the PLAINTEXT — the service encrypts it before storage when {@code
+ * secret}.
+ *
+ * @param value the new plaintext value (optional, ≤ 4096 chars)
+ * @param secret whether the value must be stored encrypted
  */
-@Configuration
-@EnableJpaAuditing(auditorAwareRef = "systemAuditorAware")
-public class JpaAuditingConfig {}
+public record SettingUpdateRequest(@Size(max = 4096) String value, boolean secret) {}

@@ -17,14 +17,13 @@ package io.github.degdev.engine.common.persistence;
 
 import java.util.Optional;
 import org.springframework.data.domain.AuditorAware;
-import org.springframework.stereotype.Component;
 
 /**
  * System-level {@link AuditorAware} stub. No authenticated principal exists yet, so every change is
- * attributed to the {@code system} actor. Real user attribution wires in at milestone {@code
- * 02-auth}; until then this bean simply satisfies the auditing reference.
+ * attributed to the {@code system} actor. Real user attribution wires in later; until then this
+ * bean simply satisfies the auditing reference. Instantiated as a {@code @Bean} by {@link
+ * PersistenceAutoConfiguration} (named {@code systemAuditorAware} to match its auditing reference).
  */
-@Component("systemAuditorAware")
 public class SystemAuditorAware implements AuditorAware<String> {
 
   private static final String SYSTEM_ACTOR = "system";

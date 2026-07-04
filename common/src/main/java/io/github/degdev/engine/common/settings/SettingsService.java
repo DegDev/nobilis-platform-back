@@ -19,20 +19,26 @@ import io.github.degdev.engine.common.crypto.CryptoService;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Read/write access to engine {@link Setting}s with transparent secret handling.
  *
  * <p>{@link #set} encrypts the value when {@code secret} is requested; {@link #get} decrypts it on
- * the way out. Callers always deal in plaintext — the ciphertext exists only in the column.
+ * the way out. Callers that read a secret <em>for use</em> go through {@link #get} and always deal
+ * in plaintext — the ciphertext exists only in the column. Callers that merely list or display
+ * settings (the admin API) go through {@link #find} / {@link #list}, which return the raw {@link
+ * Setting} entity and never decrypt, so a secret's plaintext is never produced for a display path.
  *
- * <p>Lombok {@code @RequiredArgsConstructor} wires the {@code final} collaborators (Spring sees one
- * constructor and injects); {@code @Slf4j} provides the {@code log} field.
+ * <p>Not a {@code @Service}: it is wired as an explicit {@code @Bean} by {@code
+ * SettingsAutoConfiguration}, gated on both a JPA {@code EntityManagerFactory} and a {@link
+ * CryptoService} being present, so a stateless or crypto-less host simply has no settings service
+ * rather than a fail-fast boot. Lombok {@code @RequiredArgsConstructor} wires the {@code final}
+ * collaborators; {@code @Slf4j} provides the {@code log} field.
  */
 @Slf4j
-@Service
 @RequiredArgsConstructor
 public class SettingsService {
 
@@ -55,6 +61,31 @@ public class SettingsService {
                 setting.isSecret()
                     ? cryptoService.decrypt(setting.getValue())
                     : setting.getValue());
+  }
+
+  /**
+   * Reads a setting as its raw {@link Setting} entity, WITHOUT decrypting. Display/administration
+   * paths use this (not {@link #get}) so a secret's plaintext is never produced merely to list or
+   * inspect it — the caller masks the stored value.
+   *
+   * @param key the setting key
+   * @return the setting entity, or empty if the key is unset
+   */
+  @Transactional(readOnly = true)
+  public Optional<Setting> find(String key) {
+    return repository.findByKey(key);
+  }
+
+  /**
+   * Lists settings as raw {@link Setting} entities, a page at a time and WITHOUT decrypting (same
+   * no-plaintext contract as {@link #find}). The caller masks secret values.
+   *
+   * @param pageable the page request (page number, size, sort)
+   * @return the requested page of settings
+   */
+  @Transactional(readOnly = true)
+  public Page<Setting> list(Pageable pageable) {
+    return repository.findAll(pageable);
   }
 
   /**
@@ -81,5 +112,24 @@ public class SettingsService {
             .orElseGet(() -> new Setting(key, stored, secret));
     log.debug("Saving setting '{}' (secret={})", key, secret);
     return repository.save(setting);
+  }
+
+  /**
+   * Deletes a setting by key, reporting whether one existed.
+   *
+   * @param key the setting key
+   * @return {@code true} if a setting was deleted, {@code false} if the key was already unset
+   */
+  @Transactional
+  public boolean delete(String key) {
+    return repository
+        .findByKey(key)
+        .map(
+            setting -> {
+              repository.delete(setting);
+              log.debug("Deleted setting '{}'", key);
+              return true;
+            })
+        .orElse(false);
   }
 }
