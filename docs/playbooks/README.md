@@ -26,6 +26,10 @@ inside each file. The contract (DTOs, endpoints) is the seam between the pair.
 - `lombok-conventions.md` — before creating/editing any data class, DTO, entity, or service: which
   Lombok annotations (and when a `record` or a hand-written constructor is right instead). Backend
   only (Lombok is JVM-only). **[ready]**
+- `engine-screen-mounting.md` — bringing a new engine admin screen's backend online so it mounts
+  ONLY when its store (DB) exists and never half-mounts on the stateless host: service gated on the
+  EMF, unconditional `@AutoConfigurationPackage`, controller via a service-gated auto-config AND in
+  the component-scan exclude. Backend only (JVM/Spring wiring). **[ready]**
 
 ## Backend playbooks (anticipated)
 
