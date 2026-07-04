@@ -61,6 +61,17 @@ The condensed rule the assistant follows when authoring a prompt (the sections b
 
 ---
 
+## Context hygiene between passes
+
+Long sessions degrade as the window fills; keep it clean deliberately. Agent-neutral principles (Claude Code commands noted in parentheses).
+
+- **Clear context between passes** (`/clear`). One pass = one topic = one commit. After a pass reaches its commit-gate (STOP + report), clear before starting the next unrelated pass — don't carry a finished topic into the next. A bloated window dilutes attention on every later instruction.
+- **Sidebar tangents out of the working thread** (`/btw`, or a throwaway session). A quick question that shouldn't enter the task history goes to the side, so the main thread stays on the task.
+- **Focused compaction for long single-topic stretches** (`/compact <focus>`). When one pass legitimately runs long (a hard bug, a big feature), compact with an explicit focus line to preserve the thread being worked while shedding the rest — better than letting an unfocused auto-compact decide.
+- **Investigation stays in a subagent.** Multi-file recon runs in the recon subagent and returns a compact file:line summary marked do-not-re-verify; the raw exploration never lands in the main window. (Already standard — restated here as the primary context-budget lever.)
+
+---
+
 ## Type 1 — RECON (read-only investigation)
 
 **When:** before implementing, diagnosing a bug, designing, or any change to unfamiliar territory.
