@@ -54,3 +54,6 @@ application-local.yaml
 
 # --- CC tooling — provisioned binaries, never committed ---
 .claude/tools/
+
+# clean-room name blocklist for methodology-backport.sh (real names stay local)
+scripts/cleanroom-blocklist

@@ -344,6 +344,87 @@ Long sessions degrade as the window fills; keep it clean deliberately. Agent-neu
 
 ---
 
+## Deterministic gates: hooks, not prose
+
+A commit-gate (block direct commits/pushes to protected branches; feature branches free) and an end-of-turn build check are not advisory prose in the instructions file — they are `PreToolUse`/`Stop` hooks committed to the repo. A rule as text erodes and gets bypassed; a rule as a hook is a deterministic boundary: it parses command chains and the `-C`/`cd`/cwd of the *target* repo to read that repo's branch (not the hook's own cwd), and the end-of-turn check ignores red test-spec noise, gating only application code. Prefer a barrier to an instruction wherever one exists. The *format* of the commit message (not the permission to commit) stays a playbook concern, separate from the gate.
+
+---
+
+## Deployment requirements — a green build ≠ a running process
+
+A recurring root cause: a green `build`/`test` does not prove a deployed process starts and serves. Three linked rules; the parentheses are illustration, not the norm.
+
+**A `## Deployment requirements` section is mandatory for any subsystem with external config.** A subsystem whose runtime depends on settings *outside* the repo code (properties outside version control, an edge/reverse proxy, DB config, a front's env, a dependency's classpath scope) carries, in its *own* canonical doc, a numbered contract table: `# · What · Where it lives · Default if unset · Consequence of omission · Owner (repo/ops)`. It lives next to the fact (the subsystem's canonical doc), not in a shared README; the birds-eye map only indexes it with a pointer line. **The "consequence of omission" column is mandatory** — it is what separates a contract from a useless list. This section is not a duplicate of a security/audit doc: an audit is point-in-time recon, this is a live deployment contract; it *references* the audit, it does not copy it.
+
+**The prod config mechanism is a GATE-0 evidence class.** Before any config- or dependency-edit, establish how prod *actually* loads configuration and resolves dependencies: an external per-process file in the build directory ≠ a bundled repo profile shipped in the artifact ≠ a local dev config; runtime scope ≠ test scope. Confirm the mechanism by *reading the deployment* (the process manager, the directory layout, the dependency tree with scopes) — do not infer it from a gitignore, from local behavior, or from green tests. If an override lives outside version control, the provenance says so in plain text (the repo does not enforce it; deployment owns applying it). An unconfirmed mechanism → STOP, do not guess. (Illustration: a bundled config file left untracked → make the annotation default fail-safe, or a clean checkout boots on the framework's default port.)
+
+**A live process start is a DoD item** for any change touching classpath, dependencies, datasource, port, launch config, or a cross-process contract (including the front↔back address). The DoD requires an *actual* process start and a request passing through — not only `build`/`test`. Test scope suffices for tests, not for runtime; a green CI does not prove the process starts and listens on the right port. Verify on the live process (a startup log + a real request/response code); where scriptable, a smoke-boot in CI or the Stop-hook. (The start is initiated by the process owner — see the instructions file.)
+
+---
+
+## Questions gate the prompt (hard for HEAVY/config/deploy; LIGHT defaults in one line)
+
+This governs the prompt *author* (before the prompt is written), not the agent's behavior. Before writing the prompt, resolve unknowns by asking — do not guess and do not patch as you go.
+
+**Hard for HEAVY / config / deploy / integration.** Where an unknown fact has a wrong-default = rework cost → STOP and ask, wait for the answer, then write. **Never reconstruct config keys / ports / paths from memory** — a gating value is an evidence class (it comes from the code/deployment, not from your head; see the deployment-requirements rule). Pull *all* gating facts before the prompt, in *one* round.
+
+**Anti-pattern (forbidden) — turn-by-turn revise:** rewriting an already-written prompt for each newly-surfaced fact, in circles. A string of facts each of which flips the decision is the signature of a skipped round of questions — they should have been gathered in one pass before the prompt.
+
+**LIGHT (a one-sentence diff, a safe default)** — skip the questions, name the default in one line; do not multiply questions on the trivial. But a fork where a wrong default = rework is not swallowed silently even in LIGHT — one short question is cheaper than the rework.
+
+---
+
+## The portable layer is project-agnostic (methodology + playbooks)
+
+`docs/process/` and `docs/playbooks/` are the *portable* layer (they travel to new projects). **Rule bodies here are project-agnostic:** no person names, and no project literals (a repo / server / stand / external-system name, a ticket key) *as the norm*.
+
+**A person's name → a role,** by grammar, not mechanically: a third-person description → "the engineer" ("the engineer holds the commit-gate"); a direct instruction → "you" ("if you fixed it twice — …").
+
+**Project specifics are allowed ONLY as:**
+- a *marked* illustration / precedent / incident — "(e.g. …)", "(Precedent: …)", "**Incident:** …" — read as an EXAMPLE, not a norm;
+- a *reference exemplar* pointing at a concrete class / entity / file — a model implementation (where to look), not a universal rule; the class name is the value of the reference and is NOT anonymized;
+- a *structural pointer* (a path / a subsystem's canonical doc / a sibling repo's paired playbook) or an index's repo self-identification ("Playbooks (&lt;repo&gt;)") — an address, not a norm.
+
+**A ticket key (`ABC-123`) is not in the rule body:** tracing lives in commit messages and the provenance log, not in a portable rule.
+
+**Canonical subsystem docs are exempt:** there, project specifics (entities, endpoints, stands) are the *subject* of the doc, not a violation — this rule is for the portable layer only. Future `.md` in this layer follows agnosticism strictly (a review-gate: a person's name or a project-literal-as-norm in a portable rule body = a blocker).
+
+---
+
+## KISS — the simplest path under real uncertainty (recon is not the default)
+
+The recon / HEAVY cycle is a tool for *real* uncertainty, not a default. If a fix is one sentence AND the root is already narrowed to a candidate (a prior recon or plain obviousness named the likely source) → go straight to BUILD with a GATE-0 check of that candidate (+ STOP if it is not the one), with no separate recon round. Do not order a second recon when the previous one already narrowed the problem to a candidate — hit it with a BUILD. KISS does not waive evidence: simplicity means less ceremony, NOT less proof — the candidate check lives in GATE-0 inside the BUILD, it is not dropped.
+
+---
+
+## Anti-overhead — a locked plan → command directly, not a duplicate prompt
+
+When a plan is already locked (a plan doc) and a pass proceeds *from* it with no new delta (scope + provenance already in the plan, no forks) — the author does NOT write a BUILD prompt; the operator commands the agent directly ("do &lt;step&gt; per the plan"). A prompt that merely duplicates the plan is pure overhead. A prompt is needed ONLY on a delta to the plan: a fresh fact after recon, a fork for the operator to decide, or a pass outside the plan (LIGHT / FIX / RULE / DOCS). Nothing to add beyond the plan → do not write one. (The "do not proliferate" principle applied to the prompts themselves.)
+
+---
+
+## Branch base = the dependency's location, not blindly the main line
+
+**A branch is opened per task, with its own id;** the sub-steps and addenda of one task are commits to *its* branch, not a new one.
+
+**Do not auto-base a new branch off the main line by default.** The base of a new branch = the *location of its dependency*: if a code-dependency is not in the main line yet (it lives in a feature branch), stack the new branch *off that branch*, not off main — otherwise the file to edit is not in the base and there is nothing to change.
+
+**Merge order = the dependency first,** then rebase the branches stacked above it. The author does not pick the base silently — proposes it and checks with the operator. (This is branch *topology*; it makes no assumption about what merging the main line triggers — a project states its own release/deploy cadence separately.)
+
+---
+
+## Editing shared / base code = HEAVY by definition; GATE-0 asks WHY
+
+Changing common/base code that already has consumers (a shared library, base ancestor classes, common services several contours inherit from) is HEAVY *by definition*, even when the trigger is cosmetic or local to one contour. The blast radius is every consumer, not just yours. Therefore:
+
+**(1)** Such a change does NOT go on the LIGHT track: even a one-line replacement in a common ancestor is reviewed as architectural — the rollback boundary is wider than the touched file.
+
+**(2)** Before replacing a shared API, GATE-0 must answer "WHY is the current implementation THIS way" — not only "who calls it." The choice may have been deliberate (a specific capability another consumer depends on). Recon "can this be removed" ≠ recon "why it was chosen": the first finds callers, the second finds the reason.
+
+**(3)** "Isolate a feature in contour X" means do NOT touch the common ancestor: a contour-local service/wrapper called by X's components, not a swap of the implementation in the shared base. If the "isolation" edit lands in the shared ancestor, the isolation boundary is broken — that is no longer isolation. (Precedent: swapping a deliberately-chosen provider in a common base component — chosen for a capability a *different* consumer relied on in several places — broke that consumer; revert. The right move was a contour-local service, leaving the base untouched.) This complements the read-only-core rule: that one forbids editing a parent core; this one is about the shared layer *with* consumers (finer — editing is allowed, but the blast radius makes it HEAVY).
+
+---
+
 ## Meta-principle
 
 The best prompt = **seasoned project context + precise boundaries + known traps + clear STOP-points.** Not a "clever" prompt, a PRECISE one: the agent knows what to look for, where to stop, what not to touch, which traps await. Prompt quality grows from accumulated project knowledge (recons, patterns, traps), not from wording.
