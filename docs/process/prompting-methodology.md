@@ -123,6 +123,7 @@ Long sessions degrade as the window fills; keep it clean deliberately. Agent-neu
 - **Collect facts symmetrically — recon does NOT pick a winner.** When the question has options (approach A vs B), recon reports, for EACH option, what existing code would support it and what blocks it — facts only, no "the code leans toward A", no recommendation. "Leans toward" is already design, and design is a separate pass. A recon that nudges the answer has stopped being recon. The choice happens after the report, with the facts in hand.
 - **Premise check — recon may correct the question, not just answer it, and this is MECHANICAL not a judgment call.** A prompt's stated context can be wrong (a premise built on a stale assumption — e.g. "opt-in is wired via X" when the code does Y, or "enum stored as ordinal" when it's a string). Frame the check as verifying specific, concrete claims against the code (a type, a return value, an existence assumption) — NOT as "does this premise sound plausible" (plausibility judgment is a weaker fit for fast/cheap models; mechanical verification against file:line is a strong fit). If recon shows the premise is false, say so plainly BEFORE the structured findings — do not bend the answer to fit the question. Verify referenced rules/principles actually hold in code rather than taking the docs on faith (docs drift from code — report drift explicitly when found). Recon that blindly executes a false premise produces confident wrong work.
 - **Fast/cheap models are a legitimate choice for recon** (evidence-gathering doesn't need the strongest model) PROVIDED the rules compensate: turn judgment calls into mechanical checklists (premise check above), require file:line for every claim, and keep the agent from ever drafting a fix. If a fast-model recon starts producing shallow or wrong reports, that's a signal a rule needs to become more mechanical, not that recon should carry more free judgment.
+- **Decisive-first ordering.** When recon already has a strong hypothesis about the cause (especially one the prompt's author already stated in the header), put the cheapest test that would decisively confirm or refute that hypothesis FIRST in the investigation order, not last. If it confirms, the remaining lines are often redundant or read differently in its light. (Marked illustration: a bug reproduces on one environment and not another → compare environment state as the first line, not the last.)
 
 ---
 
@@ -272,6 +273,7 @@ Long sessions degrade as the window fills; keep it clean deliberately. Agent-neu
 - **Problem class:** a frequent pattern ("data exists, display doesn't show it" / "filter source != display source") — name the class, look for it recurring wider.
 - **Contradiction as a clue:** "counter says 15, body empty" — an internal contradiction points at the gap.
 - **Backlog escalation:** if a bug exposes a root problem (a coverage hole), don't patch under the bug — raise it to the architectural backlog as a separate task.
+- **A boundary/independence proof by name-grep alone is incomplete.** Grepping for named classes/tokens/identifiers to prove one module doesn't depend on another misses the silently-inherited baseline layer: bare-tag selectors, resets, global typography, root-level variables, cascading defaults. Check that layer explicitly, alongside the named-token grep, or the "confirmed independent" conclusion may be false. (Precedent: a recon called a stylesheet "100% one module's own chrome" from a class/id-selector grep; the same file also held bare-tag global rules the grep couldn't see — the isolation claim was wrong even though the eventual bug lay elsewhere.)
 
 ---
 
@@ -422,6 +424,18 @@ Changing common/base code that already has consumers (a shared library, base anc
 **(2)** Before replacing a shared API, GATE-0 must answer "WHY is the current implementation THIS way" — not only "who calls it." The choice may have been deliberate (a specific capability another consumer depends on). Recon "can this be removed" ≠ recon "why it was chosen": the first finds callers, the second finds the reason.
 
 **(3)** "Isolate a feature in contour X" means do NOT touch the common ancestor: a contour-local service/wrapper called by X's components, not a swap of the implementation in the shared base. If the "isolation" edit lands in the shared ancestor, the isolation boundary is broken — that is no longer isolation. (Precedent: swapping a deliberately-chosen provider in a common base component — chosen for a capability a *different* consumer relied on in several places — broke that consumer; revert. The right move was a contour-local service, leaving the base untouched.) This complements the read-only-core rule: that one forbids editing a parent core; this one is about the shared layer *with* consumers (finer — editing is allowed, but the blast radius makes it HEAVY).
+
+---
+
+## Default acceptance is unit + integration-slice; live-UI verification is opt-in
+
+The default Definition-of-Done acceptance for a UI change is **unit + slice-level** tests (component/unit tests on the front, a web-layer slice test on the back) — not a live browser/E2E run. A live-UI pass (browser automation, a real render, computed styles) is **opt-in, by the operator's explicit request,** not an automatic DoD line on every pass. This draws the line cleanly: visual regression, layout, and animation need a live eye (a slice test can't catch them) — logic, state, and contract are fully covered by unit/slice. Don't default an agent onto a live-UI tool that may be disabled or out of budget for a given project/profile; state the project's own default explicitly in its own instructions file if it differs (e.g. a project keeping both a unit-level and a live-UI test tool available may leave the live one off by default, turning it on only when the operator asks).
+
+---
+
+## Direct-access boundary is by work class, not file extension
+
+Where a direct-filesystem tool is available to the assistant (outside the coding-agent's own prompt flow), the boundary on what it may edit directly is **by class of work, not by file extension:** docs / tooling scripts / build-and-lint config (a portable-layer doc, a maintenance script, a package-manager or bundler config) may be edited directly when such a tool exists — but **product/feature code** (application logic, entities, controllers, components — anything that ships the product) always goes through the coding-agent's own BUILD/FIX prompt flow, never a direct edit, regardless of whether the direct-access tool is technically capable of it. A tool's capability is not authorization: the ability to write a file is not permission to bypass the implementation flow for product code.
 
 ---
 
