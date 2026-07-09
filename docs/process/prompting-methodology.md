@@ -433,9 +433,11 @@ The default Definition-of-Done acceptance for a UI change is **unit + slice-leve
 
 ---
 
-## Direct-access boundary is by work class, not file extension
+## Direct-access boundary: `.md` only — the coding agent is the sole authority on code
 
-Where a direct-filesystem tool is available to the assistant (outside the coding-agent's own prompt flow), the boundary on what it may edit directly is **by class of work, not by file extension:** docs / tooling scripts / build-and-lint config (a portable-layer doc, a maintenance script, a package-manager or bundler config) may be edited directly when such a tool exists — but **product/feature code** (application logic, entities, controllers, components — anything that ships the product) always goes through the coding-agent's own BUILD/FIX prompt flow, never a direct edit, regardless of whether the direct-access tool is technically capable of it. A tool's capability is not authorization: the ability to write a file is not permission to bypass the implementation flow for product code.
+Where a direct-filesystem tool is available to the assistant (outside the coding agent's own prompt flow), it may edit **only markdown documentation (`.md`) directly.** Everything else — application code, tooling scripts, build-and-lint config, CI workflow files, hook scripts, package-manager config — always goes through the coding agent's own BUILD/FIX prompt flow, never a direct edit, regardless of whether the direct-access tool is technically capable of it. A tool's capability is not authorization.
+
+This narrows an earlier version of this rule, which additionally permitted tooling scripts and build-and-lint config directly. That version was tried and reverted: a project with two authorized paths for changing the same codebase (a direct-access tool AND a coding agent) risks silent divergence between what each path assumes about the other's state, inconsistent provenance, and a real incident where an uncommitted direct edit (created outside the coding agent's tracked flow) was invisible to a coding-agent session working from a different checkout of the same repo. One authority — the coding agent — for everything except `.md` removes the seam entirely.
 
 ---
 
