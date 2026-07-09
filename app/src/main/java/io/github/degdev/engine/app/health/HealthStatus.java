@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package io.github.degdev.engine.app.health;
+
 /**
- * Portal shell runnable. HTTP application.
+ * The liveness probe's response body, serialised as {@code {"status":"UP"}}.
  *
- * <p>The extension points domain modules will plug into are NOT built yet: the mechanism stays
- * deferred rather than designed speculatively. Tracked as BL-001 in {@code
- * docs/architecture-backlog.md}.
+ * @param status the host's liveness status
  */
-package io.github.degdev.engine.app;
+public record HealthStatus(String status) {}
