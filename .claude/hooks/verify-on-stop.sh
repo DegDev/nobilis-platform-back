@@ -34,8 +34,16 @@ check() {
   if [ -f "$repo/pom.xml" ]; then
     jdk="$(find_jdk || true)"; jh=""
     [ -n "$jdk" ] && jh="$(dirname "$(dirname "$jdk")")"
-    if ! ( cd "$repo" && { [ -n "$jh" ] && export JAVA_HOME="$jh"; mvn -B verify; } ) >/tmp/nobilis-verify-back.log 2>&1; then
-      fail=1; msg="$msg"$'\n'"[BACK] mvn -B verify RED (/tmp/nobilis-verify-back.log):"$'\n'"$(tail -n 30 /tmp/nobilis-verify-back.log)"
+    run_mvn() { ( cd "$repo" && { [ -n "$jh" ] && export JAVA_HOME="$jh"; mvn -B "$@"; } ); }
+    # Retry-once-on-red: a stale target/ (e.g. an annotation-processor-generated
+    # .imports entry surviving a rename/delete under incremental compilation) can
+    # fail a build for reasons unrelated to this session's diff. Pay for `clean`
+    # only when verify is ALREADY red, not on every green Stop (bounded retry,
+    # not a loop -- consistent with the block-once anti-spin above).
+    if ! run_mvn verify >/tmp/nobilis-verify-back.log 2>&1; then
+      if ! run_mvn clean verify >/tmp/nobilis-verify-back.log 2>&1; then
+        fail=1; msg="$msg"$'\n'"[BACK] mvn -B verify RED even after a clean rebuild (stale target/ ruled out) — see /tmp/nobilis-verify-back.log:"$'\n'"$(tail -n 30 /tmp/nobilis-verify-back.log)"
+      fi
     fi
   elif [ -f "$repo/angular.json" ]; then
     if ! ( cd "$repo" \
