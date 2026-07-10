@@ -224,6 +224,35 @@ class SettingsCrudIntegrationTest {
         .andExpect(jsonPath("$.page.totalElements").value(greaterThanOrEqualTo(3)));
   }
 
+  @Test
+  void listByKeyPrefixReturnsOnlyMatchingKeysAndNeverLeaksASecretValue() throws Exception {
+    String auth = bearer(adminToken());
+
+    mockMvc.perform(
+        post(BASE)
+            .header(HttpHeaders.AUTHORIZATION, auth)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(
+                "{\"key\":\"integration.figma.api_key\",\"value\":\"secret-token\","
+                    + "\"secret\":true}"));
+    mockMvc.perform(
+        post(BASE)
+            .header(HttpHeaders.AUTHORIZATION, auth)
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"key\":\"portal.title\",\"value\":\"Nobilis\",\"secret\":false}"));
+
+    mockMvc
+        .perform(get(BASE + "?keyPrefix=integration.").header(HttpHeaders.AUTHORIZATION, auth))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content.length()").value(1))
+        .andExpect(jsonPath("$.content[0].key").value("integration.figma.api_key"))
+        .andExpect(jsonPath("$.content[0].secret").value(true))
+        .andExpect(jsonPath("$.content[0].value").value(Matchers.nullValue()))
+        // The secret's plaintext (nor its ciphertext) never appears in the prefix-filtered
+        // response.
+        .andExpect(content().string(Matchers.not(Matchers.containsString("secret-token"))));
+  }
+
   private String adminToken() {
     return jwtService.issue(
         "admin", List.of(), List.of("ADMIN"), List.of(EnginePermissions.SETTINGS_MANAGE));

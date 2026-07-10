@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 /**
  * Read/write access to engine {@link Setting}s with transparent secret handling.
@@ -80,12 +81,16 @@ public class SettingsService {
    * Lists settings as raw {@link Setting} entities, a page at a time and WITHOUT decrypting (same
    * no-plaintext contract as {@link #find}). The caller masks secret values.
    *
+   * @param keyPrefix when non-blank, only keys starting with this prefix are returned; blank or
+   *     {@code null} lists everything
    * @param pageable the page request (page number, size, sort)
    * @return the requested page of settings
    */
   @Transactional(readOnly = true)
-  public Page<Setting> list(Pageable pageable) {
-    return repository.findAll(pageable);
+  public Page<Setting> list(String keyPrefix, Pageable pageable) {
+    return StringUtils.hasText(keyPrefix)
+        ? repository.findByKeyStartingWith(keyPrefix, pageable)
+        : repository.findAll(pageable);
   }
 
   /**
