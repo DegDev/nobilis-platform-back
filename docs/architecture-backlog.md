@@ -37,3 +37,27 @@ do not build from this paragraph.
 
 **Decision needed by:** Not urgent — resolves naturally when milestone 07's order-form recon reaches
 the "how does this attach to the app portal" question. Revisit this entry then, not before.
+
+---
+
+## BL-002 — CMS image/MinIO attachment
+
+**Status:** To align (deferred, not designed)
+
+**Context:** Milestone `03-cms-screen` added a generic content-block mechanism (`ContentBlock` +
+`ContentTranslation`, text only). MinIO exists today only as an unwired docker-compose service
+(`stack.yml:77-93`) — zero SDK dependency, zero Java client, zero consumer anywhere in either repo.
+Wiring an S3/MinIO SDK into the first CMS pass would be infrastructure-ahead-of-need.
+
+**Problem:** No concrete consumer has stated what an image attachment needs yet (single hero image?
+gallery? per-translation images?) — designing the storage contract now would guess at that shape.
+
+**Idea (not locked, just the current guess):** a sibling entity/column on `ContentBlock` or
+`ContentTranslation` holding a MinIO object key, resolved to a URL at read time — but this is a
+guess, not a decision; do not build from this paragraph.
+
+**Scope:** `common` (CMS entities/service) — no domain code.
+
+**Decision needed by:** Not urgent — resolves when a real screen (admin CMS editor, milestone 03
+pass 4, or a domain consumer) states a concrete image requirement. Revisit this entry then, not
+before.

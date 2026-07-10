@@ -26,11 +26,61 @@ find_jdk() {
   return 1
 }
 
+# A dirty tree with EVERY changed path matching a docs-only glob (*.md, .agent/**,
+# docs/**) has no buildable delta -- skip its build the same way a clean tree is
+# skipped. CI runs a clean build on every push regardless; this is a fast local
+# signal, and building on a doc-only diff can only ever be a false-red. Matches the
+# FULL path (git-status-relative, i.e. repo-root-relative) so e.g. "x.md.ts" does
+# NOT match "*.md" (suffix match on the whole path, not a substring search).
+is_docs_only() {
+  local repo="$1" line path
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    path="${line:3}"
+    case "$path" in *' -> '*) path="${path##*-> }" ;; esac
+    path="${path%\"}"; path="${path#\"}"
+    case "$path" in
+      *.md|.agent/*|docs/*) ;;
+      *) return 1 ;;
+    esac
+  done < <(git -C "$repo" status --porcelain 2>/dev/null)
+  return 0
+}
+
+# Resolve the Node the FRONT repo wants (.nvmrc-pinned; box default can be older,
+# e.g. v22 when v24.18 is required) -- portable, no hardcoded path. Preference
+# order: (1) nvm's exact matching install, (2) a PATH node already satisfying the
+# version, (3) the newest nvm-installed version that still satisfies it. Never
+# silently accepts a too-old node -- returns failure (empty stdout) if none of the
+# three satisfy, so the caller can skip instead of false-reding on a version gate.
+version_ge() { [ "$1" = "$2" ] || [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ]; }
+find_node() {
+  local repo="$1" wanted nvmdir c v
+  wanted="$(tr -d '[:space:]' < "$repo/.nvmrc" 2>/dev/null)"; wanted="${wanted#v}"
+  [ -n "$wanted" ] || return 1
+  nvmdir="${NVM_DIR:-$HOME/.nvm}"
+  c="$nvmdir/versions/node/v$wanted/bin/node"
+  [ -x "$c" ] && { printf '%s\n' "$c"; return 0; }
+  c="$(command -v node 2>/dev/null || true)"
+  if [ -n "$c" ]; then
+    v="$("$c" -v 2>/dev/null | tr -d 'v')"
+    case "$v" in ''|*[!0-9.]*) ;; *) version_ge "$v" "$wanted" && { printf '%s\n' "$c"; return 0; } ;; esac
+  fi
+  for c in $(ls -d "$nvmdir"/versions/node/*/bin/node 2>/dev/null | sort -rV); do
+    [ -x "$c" ] || continue
+    v="$("$c" -v 2>/dev/null | tr -d 'v')"
+    case "$v" in ''|*[!0-9.]*) continue ;; esac
+    version_ge "$v" "$wanted" && { printf '%s\n' "$c"; return 0; }
+  done
+  return 1
+}
+
 fail=0; msg=""
 check() {
-  local repo="$1" jdk jh
+  local repo="$1" jdk jh node_bin node_dir wanted
   [ -d "$repo" ] || return 0
   [ -n "$(git -C "$repo" status --porcelain 2>/dev/null)" ] || return 0   # clean tree -> skip
+  is_docs_only "$repo" && return 0   # docs-only diff -> nothing buildable changed, skip
   if [ -f "$repo/pom.xml" ]; then
     jdk="$(find_jdk || true)"; jh=""
     [ -n "$jdk" ] && jh="$(dirname "$(dirname "$jdk")")"
@@ -46,7 +96,14 @@ check() {
       fi
     fi
   elif [ -f "$repo/angular.json" ]; then
-    if ! ( cd "$repo" \
+    node_bin="$(find_node "$repo" || true)"
+    if [ -z "$node_bin" ]; then
+      wanted="$(tr -d '[:space:]' < "$repo/.nvmrc" 2>/dev/null)"
+      printf '[FRONT] node %s not found, skipping front verify\n' "${wanted:-?}" >&2
+      return 0
+    fi
+    node_dir="$(dirname "$node_bin")"
+    if ! ( cd "$repo" && export PATH="$node_dir:$PATH" \
         && node_modules/.bin/ng build common --configuration=development \
         && node_modules/.bin/ng build admin  --configuration=development \
         && node_modules/.bin/ng build app    --configuration=development \

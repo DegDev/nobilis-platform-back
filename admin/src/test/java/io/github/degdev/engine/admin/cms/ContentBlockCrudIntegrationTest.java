@@ -13,11 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.degdev.engine.admin.roles;
+package io.github.degdev.engine.admin.cms;
 
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -25,15 +22,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.degdev.engine.admin.security.AdminContourFilter;
-import io.github.degdev.engine.auth.account.Account;
-import io.github.degdev.engine.auth.account.AccountRepository;
-import io.github.degdev.engine.auth.account.AccountStatus;
 import io.github.degdev.engine.auth.gate.JwtAuthenticationFilter;
 import io.github.degdev.engine.auth.role.EnginePermissions;
-import io.github.degdev.engine.auth.role.Role;
-import io.github.degdev.engine.auth.role.RoleRepository;
 import io.github.degdev.engine.auth.token.JwtService;
 import io.github.degdev.engine.common.crypto.CryptoKeyGenerator;
 import java.util.List;
@@ -54,18 +45,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
- * Full-stack slice of the roles API against a real PostgreSQL 18 (Testcontainers), the second
- * consumer of the admin REST framework. Boots with the stateless exclusions RESET to empty so
- * persistence is active — which also proves the roles controller mounts only via {@code
- * RoleAdminAutoConfiguration} (gated on the {@code RoleService} auth contributes) and that auth's
- * repositories are discovered in this host purely via {@code AuthPersistenceAutoConfiguration}'s
- * package; if either failed the context would not start.
+ * Full-stack slice of the content-blocks API against a real PostgreSQL 18 (Testcontainers),
+ * following the {@code RolesCrudIntegrationTest} shape. Boots with the stateless exclusions RESET
+ * to empty so persistence is active — which also proves the controller mounts only via {@code
+ * ContentBlockWebAutoConfiguration} (gated on the {@code ContentBlockService} common contributes).
  *
- * <p>Asserts the framework contract for a second controller (unchanged gate/contour/interceptor):
- * {@code 401} anonymous, {@code 403} wrong realm, {@code 403} missing {@code ACCOUNT_MANAGE}; a
- * CRUD round-trip; {@code 409} on a duplicate code and on deleting an in-use role (with the
- * reference count); {@code 400} on an unknown permission; the permission catalog; and {@code
- * PagedModel} pagination.
+ * <p>Asserts the framework contract: {@code 401} anonymous, {@code 403} missing {@code
+ * CONTENT_MANAGE}; a create/status/translation/delete round-trip; {@code 409} on a duplicate key;
+ * {@code 404} on an unknown key; {@code 400} on an unsupported locale; and {@code PagedModel}
+ * pagination.
  *
  * <p>All keys are generated at runtime via {@link DynamicPropertySource}; none is ever committed.
  */
@@ -76,21 +64,18 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
       "spring.jpa.open-in-view=false"
     })
 @Testcontainers
-class RolesCrudIntegrationTest {
+class ContentBlockCrudIntegrationTest {
 
   @Container @ServiceConnection
   static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18");
 
-  private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String TEST_JWT_KEY = CryptoKeyGenerator.generateBase64Key();
-  private static final String BASE = "/admin/api/roles";
+  private static final String BASE = "/admin/api/content-blocks";
 
   @Autowired private WebApplicationContext context;
   @Autowired private JwtAuthenticationFilter gateFilter;
   @Autowired private AdminContourFilter contourFilter;
   @Autowired private JwtService jwtService;
-  @Autowired private RoleRepository roleRepository;
-  @Autowired private AccountRepository accountRepository;
 
   private MockMvc mockMvc;
 
@@ -112,18 +97,7 @@ class RolesCrudIntegrationTest {
   }
 
   @Test
-  void nonAdminRealmIsRejectedByTheContour() throws Exception {
-    String token =
-        jwtService.issue(
-            "user", List.of(), List.of("CLIENT"), List.of(EnginePermissions.ACCOUNT_MANAGE));
-
-    mockMvc
-        .perform(get(BASE).header(HttpHeaders.AUTHORIZATION, bearer(token)))
-        .andExpect(status().isForbidden());
-  }
-
-  @Test
-  void adminWithoutAccountManageIsRejectedByTheInterceptor() throws Exception {
+  void adminWithoutContentManageIsRejectedByTheInterceptor() throws Exception {
     String token = jwtService.issue("admin", List.of(), List.of("ADMIN"), List.of());
 
     mockMvc
@@ -133,53 +107,65 @@ class RolesCrudIntegrationTest {
   }
 
   @Test
-  void createReadUpdateDelete() throws Exception {
+  void createPublishTranslateDelete() throws Exception {
     String auth = bearer(adminToken());
-
-    String created =
-        mockMvc
-            .perform(
-                post(BASE)
-                    .header(HttpHeaders.AUTHORIZATION, auth)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(
-                        "{\"code\":\"editor\",\"name\":\"Editor\",\"permissions\":[\"ACCOUNT_MANAGE\"]}"))
-            .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.code").value("editor"))
-            .andExpect(jsonPath("$.permissions", containsInAnyOrder("ACCOUNT_MANAGE")))
-            .andReturn()
-            .getResponse()
-            .getContentAsString();
-    long id = MAPPER.readTree(created).get("id").asLong();
-
-    mockMvc
-        .perform(get(BASE + "/" + id).header(HttpHeaders.AUTHORIZATION, auth))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.name").value("Editor"));
 
     mockMvc
         .perform(
-            put(BASE + "/" + id)
+            post(BASE)
                 .header(HttpHeaders.AUTHORIZATION, auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Senior editor\",\"permissions\":[\"SETTINGS_MANAGE\"]}"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.name").value("Senior editor"))
-        .andExpect(jsonPath("$.permissions", containsInAnyOrder("SETTINGS_MANAGE")));
+                .content("{\"key\":\"home.hero\",\"status\":\"DRAFT\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.key").value("home.hero"))
+        .andExpect(jsonPath("$.status").value("DRAFT"));
 
     mockMvc
-        .perform(delete(BASE + "/" + id).header(HttpHeaders.AUTHORIZATION, auth))
+        .perform(
+            put(BASE + "/home.hero/status")
+                .header(HttpHeaders.AUTHORIZATION, auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"PUBLISHED\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("PUBLISHED"));
+
+    mockMvc
+        .perform(
+            put(BASE + "/home.hero/translations/ru")
+                .header(HttpHeaders.AUTHORIZATION, auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"body\":\"Добро пожаловать\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.translations.ru").value("Добро пожаловать"));
+
+    mockMvc
+        .perform(get(BASE + "/home.hero").header(HttpHeaders.AUTHORIZATION, auth))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.translations.ru").value("Добро пожаловать"));
+
+    mockMvc
+        .perform(
+            delete(BASE + "/home.hero/translations/ru").header(HttpHeaders.AUTHORIZATION, auth))
         .andExpect(status().isNoContent());
 
     mockMvc
-        .perform(get(BASE + "/" + id).header(HttpHeaders.AUTHORIZATION, auth))
+        .perform(get(BASE + "/home.hero").header(HttpHeaders.AUTHORIZATION, auth))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.translations").isEmpty());
+
+    mockMvc
+        .perform(delete(BASE + "/home.hero").header(HttpHeaders.AUTHORIZATION, auth))
+        .andExpect(status().isNoContent());
+
+    mockMvc
+        .perform(get(BASE + "/home.hero").header(HttpHeaders.AUTHORIZATION, auth))
         .andExpect(status().isNotFound());
   }
 
   @Test
-  void duplicateCodeIsRejectedWith409() throws Exception {
+  void duplicateKeyIsRejectedWith409() throws Exception {
     String auth = bearer(adminToken());
-    String payload = "{\"code\":\"dup\",\"name\":\"Dup\",\"permissions\":[]}";
+    String payload = "{\"key\":\"dup.block\",\"status\":\"DRAFT\"}";
 
     mockMvc
         .perform(
@@ -200,41 +186,24 @@ class RolesCrudIntegrationTest {
   }
 
   @Test
-  void unknownPermissionIsRejectedWith400() throws Exception {
+  void unsupportedLocaleIsRejectedWith400() throws Exception {
+    String auth = bearer(adminToken());
     mockMvc
         .perform(
             post(BASE)
-                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken()))
+                .header(HttpHeaders.AUTHORIZATION, auth)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"code\":\"bad\",\"name\":\"Bad\",\"permissions\":[\"BOGUS_PERM\"]}"))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.detail", containsString("BOGUS_PERM")));
-  }
-
-  @Test
-  void deletingAnInUseRoleIsRejectedWith409AndTheReferenceCount() throws Exception {
-    Role role = roleRepository.save(new Role("in-use-role", "In use"));
-    Account account = new Account(AccountStatus.ACTIVE);
-    account.addRole(role);
-    accountRepository.save(account);
+                .content("{\"key\":\"locale.block\",\"status\":\"DRAFT\"}"))
+        .andExpect(status().isCreated());
 
     mockMvc
         .perform(
-            delete(BASE + "/" + role.getId())
-                .header(HttpHeaders.AUTHORIZATION, bearer(adminToken())))
-        .andExpect(status().isConflict())
-        .andExpect(jsonPath("$.status").value(409))
-        .andExpect(jsonPath("$.detail", containsString("assigned to 1")));
-  }
-
-  @Test
-  void permissionCatalogReturnsTheEnginePermissions() throws Exception {
-    mockMvc
-        .perform(get(BASE + "/permissions").header(HttpHeaders.AUTHORIZATION, bearer(adminToken())))
-        .andExpect(status().isOk())
-        .andExpect(
-            jsonPath(
-                "$", containsInAnyOrder("ACCOUNT_MANAGE", "SETTINGS_MANAGE", "CONTENT_MANAGE")));
+            put(BASE + "/locale.block/translations/fr")
+                .header(HttpHeaders.AUTHORIZATION, auth)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"body\":\"Bonjour\"}"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.detail", org.hamcrest.Matchers.containsString("fr")));
   }
 
   @Test
@@ -245,21 +214,21 @@ class RolesCrudIntegrationTest {
           post(BASE)
               .header(HttpHeaders.AUTHORIZATION, auth)
               .contentType(MediaType.APPLICATION_JSON)
-              .content(
-                  "{\"code\":\"page-role-" + i + "\",\"name\":\"n" + i + "\",\"permissions\":[]}"));
+              .content("{\"key\":\"page.block." + i + "\",\"status\":\"DRAFT\"}"));
     }
 
     mockMvc
-        .perform(get(BASE + "?size=2&sort=code").header(HttpHeaders.AUTHORIZATION, auth))
+        .perform(get(BASE + "?size=2&sort=key").header(HttpHeaders.AUTHORIZATION, auth))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(2))
         .andExpect(jsonPath("$.page.size").value(2))
-        .andExpect(jsonPath("$.page.totalElements").value(greaterThanOrEqualTo(3)));
+        .andExpect(
+            jsonPath("$.page.totalElements").value(org.hamcrest.Matchers.greaterThanOrEqualTo(3)));
   }
 
   private String adminToken() {
     return jwtService.issue(
-        "admin", List.of(), List.of("ADMIN"), List.of(EnginePermissions.ACCOUNT_MANAGE));
+        "admin", List.of(), List.of("ADMIN"), List.of(EnginePermissions.CONTENT_MANAGE));
   }
 
   private static String bearer(String token) {

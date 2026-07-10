@@ -1,3 +1,4 @@
+io.github.degdev.engine.common.cms.ContentBlockAutoConfiguration
 io.github.degdev.engine.common.crypto.CryptoAutoConfiguration
 io.github.degdev.engine.common.i18n.I18nAutoConfiguration
 io.github.degdev.engine.common.persistence.PersistenceAutoConfiguration

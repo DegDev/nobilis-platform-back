@@ -18,6 +18,7 @@ package io.github.degdev.engine.admin;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.degdev.engine.admin.accounts.AccountController;
+import io.github.degdev.engine.admin.cms.ContentBlockController;
 import io.github.degdev.engine.admin.roles.RoleController;
 import io.github.degdev.engine.admin.security.AdminContourFilter;
 import io.github.degdev.engine.auth.account.AccountRepository;
@@ -27,6 +28,7 @@ import io.github.degdev.engine.auth.gate.JwtAuthenticationFilter;
 import io.github.degdev.engine.auth.password.PasswordHasher;
 import io.github.degdev.engine.auth.role.RoleRepository;
 import io.github.degdev.engine.auth.role.RoleService;
+import io.github.degdev.engine.common.cms.ContentBlockService;
 import io.github.degdev.engine.common.crypto.CryptoKeyGenerator;
 import io.github.degdev.engine.common.crypto.CryptoService;
 import io.github.degdev.engine.common.i18n.LocaleResolver;
@@ -112,5 +114,15 @@ class AdminApplicationTest {
     // proven by AccountsCrudIntegrationTest.
     assertThat(context.getBeanNamesForType(AccountService.class)).isEmpty();
     assertThat(context.getBeanNamesForType(AccountController.class)).isEmpty();
+  }
+
+  @Test
+  void doesNotMountTheCmsApiWithoutAStore() {
+    // Same gating as roles/accounts: no EntityManagerFactory → no ContentBlockService
+    // (ContentBlockAutoConfiguration is gated on it) → no ContentBlockController
+    // (ContentBlockWebAutoConfiguration is gated on the service). The DB-enabled host gets both,
+    // proven by ContentBlockCrudIntegrationTest.
+    assertThat(context.getBeanNamesForType(ContentBlockService.class)).isEmpty();
+    assertThat(context.getBeanNamesForType(ContentBlockController.class)).isEmpty();
   }
 }

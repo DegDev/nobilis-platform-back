@@ -19,6 +19,9 @@ import io.github.degdev.engine.auth.account.UnknownRealmException;
 import io.github.degdev.engine.auth.account.UnknownRoleException;
 import io.github.degdev.engine.auth.role.RoleConflictException;
 import io.github.degdev.engine.auth.role.UnknownPermissionException;
+import io.github.degdev.engine.common.cms.ContentBlockConflictException;
+import io.github.degdev.engine.common.cms.ContentBlockNotFoundException;
+import io.github.degdev.engine.common.cms.UnsupportedLocaleException;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -50,6 +53,11 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  *       400}.
  *   <li>{@link UnknownRealmException} / {@link UnknownRoleException} (an account update naming an
  *       undefined realm or an unknown role id) &rarr; {@code 400}.
+ *   <li>{@link ContentBlockConflictException} (duplicate content block key) &rarr; {@code 409}.
+ *   <li>{@link ContentBlockNotFoundException} (unknown content block or translation) &rarr; {@code
+ *       404}.
+ *   <li>{@link UnsupportedLocaleException} (a translation write naming a blank or unsupported
+ *       locale) &rarr; {@code 400}.
  *   <li>Anything else &rarr; {@code 500} with a generic detail (the real cause is logged, never
  *       leaked to the client).
  * </ul>
@@ -148,6 +156,39 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(UnknownRoleException.class)
   public ProblemDetail handleUnknownRole(UnknownRoleException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  /**
+   * Maps a duplicate content block key on create to {@code 409}.
+   *
+   * @param ex the conflict signal
+   * @return a {@code 409} problem detail naming the blocker
+   */
+  @ExceptionHandler(ContentBlockConflictException.class)
+  public ProblemDetail handleContentBlockConflict(ContentBlockConflictException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+  }
+
+  /**
+   * Maps a request naming an unknown content block or translation to {@code 404}.
+   *
+   * @param ex the not-found signal
+   * @return a {@code 404} problem detail carrying the exception's (safe) message
+   */
+  @ExceptionHandler(ContentBlockNotFoundException.class)
+  public ProblemDetail handleContentBlockNotFound(ContentBlockNotFoundException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+  }
+
+  /**
+   * Maps a translation write naming a blank or unsupported locale to {@code 400}.
+   *
+   * @param ex the unsupported-locale signal
+   * @return a {@code 400} problem detail naming the rejected locale
+   */
+  @ExceptionHandler(UnsupportedLocaleException.class)
+  public ProblemDetail handleUnsupportedLocale(UnsupportedLocaleException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
   }
 
