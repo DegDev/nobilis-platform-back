@@ -48,15 +48,17 @@ Java Format, if Spring fluent/builder chains read better at 4-space.)
 - Versions are GLOBAL across the classpath — when a host depends on multiple modules (e.g. admin
   depends on both `common` and `auth`), all of their `db/migration` folders merge into ONE version
   history. A module cannot see another module's next free number.
-- New migrations: `VYYYYMMDDHHMMSS__snake_desc.sql` (14-digit UTC timestamp), not sequential
+- All migrations: `VYYYYMMDDHHMMSS__snake_desc.sql` (14-digit UTC timestamp), not sequential
   `V<n>`. The global namespace makes sequential numbers collide across modules; a timestamp makes
   that collision structurally impossible and self-evidently encodes apply order, with no central
-  number coordination needed.
-- Cutover, not rewrite: pre-existing sequential migrations (`common` V1, `auth` V1..V4) keep their
-  names — they're already applied and recorded in `flyway_schema_history` with checksums; renaming
-  an applied migration breaks Flyway validation. The timestamp format applies only to new
-  migrations going forward; sequential and timestamp names sort correctly together (a 14-digit
-  datetime always outranks a single/low digit).
+  number coordination needed. `V1__baseline.sql` is the sole permanent exception — the
+  traditional baseline name, never renamed.
+- Never rename an already-applied migration on a live database — Flyway validates by checksum,
+  and a rename with no matching `flyway_schema_history` repair breaks every environment where it
+  ran. A rename is only safe against a database with no applied history for that migration (fresh/
+  reset). The former `auth` `V2`..`V4` sequential names were cutover to the timestamp format under
+  exactly that condition (NB-MIGRATIONS: moved into `common`, dev DB reset first) — not a
+  precedent for renaming applied migrations elsewhere.
 
 ## Frontend (Angular)
 
