@@ -113,7 +113,7 @@ Gated by the gitleaks pre-commit hook + CI secret-scan — a key in a file is a 
 - recon → spec → tasks → DoD. Milestone plans live in `.agent/plans/` (00-foundation … 07-domain-slice).
 - Before coding a milestone — a recon ticket: close remaining TBDs, record them in sources-log.
 - Each task is atomic and verifiable against its DoD.
-- Prompt taxonomy + recon-first standard: `docs/process/prompting-methodology.md`.
+- Prompt taxonomy + recon-first standard: `docs/process/prompting-methodology.md`; prompt format: `docs/process/prompt-structure.md`. Don't duplicate their content here.
 - When compacting, always preserve: current milestone/pass state, modified-files list, verify
   commands, locked decisions.
 - Recurring engine patterns become on-demand skills in `.claude/skills/`, not new CLAUDE.md prose.
