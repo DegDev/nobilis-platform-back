@@ -15,11 +15,35 @@
  */
 package io.github.degdev.engine.app;
 
+import io.github.degdev.engine.app.content.PortalContentController;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigurationExcludeFilter;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.context.TypeExcludeFilter;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.ComponentScan.Filter;
+import org.springframework.context.annotation.FilterType;
 
-/** Boots the portal-shell HTTP application. */
-@SpringBootApplication
+/**
+ * Boots the portal-shell HTTP application.
+ *
+ * <p>This is {@code @SpringBootApplication} spelled out ({@code @SpringBootConfiguration} +
+ * {@code @EnableAutoConfiguration} + {@code @ComponentScan} with Boot's two standard exclude
+ * filters), mirroring {@code AdminApplication}, for one reason: the extra exclude filter keeps
+ * {@link PortalContentController} OUT of the component scan. It is registered as a {@code @Bean} by
+ * {@code PortalContentWebAutoConfiguration} only when the datasource profile is active — scanning
+ * it here would mount it in the stateless default host too, where it has no {@code
+ * ContentBlockService} to inject, failing the boot. Everything else scans as usual.
+ */
+@SpringBootConfiguration
+@EnableAutoConfiguration
+@ComponentScan(
+    excludeFilters = {
+      @Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
+      @Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class),
+      @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = PortalContentController.class)
+    })
 public class AppApplication {
 
   public static void main(String[] args) {
