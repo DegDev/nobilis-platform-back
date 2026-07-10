@@ -31,6 +31,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -74,12 +75,15 @@ public class SettingsController {
   /**
    * Lists settings, one page at a time. Secret values are masked.
    *
+   * @param keyPrefix when given, only keys starting with this prefix are returned (e.g. {@code
+   *     integration.} for the admin Integrations screen)
    * @param pageable the page request ({@code ?page=&size=&sort=})
    * @return a page of settings as {@link SettingDto}s
    */
   @GetMapping
-  public PagedModel<SettingDto> list(Pageable pageable) {
-    return new PagedModel<>(settingsService.list(pageable).map(SettingDto::from));
+  public PagedModel<SettingDto> list(
+      @RequestParam(required = false) String keyPrefix, Pageable pageable) {
+    return new PagedModel<>(settingsService.list(keyPrefix, pageable).map(SettingDto::from));
   }
 
   /**

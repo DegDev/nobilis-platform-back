@@ -22,11 +22,16 @@ import static org.mockito.Mockito.when;
 import io.github.degdev.engine.common.crypto.CryptoKeyGenerator;
 import io.github.degdev.engine.common.crypto.CryptoProperties;
 import io.github.degdev.engine.common.crypto.CryptoService;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Unit-level secret round-trip: a real {@link CryptoService} with a mocked repository proves that
@@ -105,5 +110,25 @@ class SettingsServiceTest {
     settingsService.set("portal.title", "New", false);
 
     assertThat(existing.getValue()).isEqualTo("New");
+  }
+
+  @Test
+  void listWithBlankPrefixListsAll() {
+    Pageable pageable = PageRequest.of(0, 10);
+    Page<Setting> all = new PageImpl<>(List.of(new Setting("portal.title", "x", false)));
+    when(repository.findAll(pageable)).thenReturn(all);
+
+    assertThat(settingsService.list(null, pageable)).isSameAs(all);
+    assertThat(settingsService.list("", pageable)).isSameAs(all);
+  }
+
+  @Test
+  void listWithPrefixDelegatesToStartingWithQuery() {
+    Pageable pageable = PageRequest.of(0, 10);
+    Page<Setting> matches =
+        new PageImpl<>(List.of(new Setting("integration.figma.api_key", "x", true)));
+    when(repository.findByKeyStartingWith("integration.", pageable)).thenReturn(matches);
+
+    assertThat(settingsService.list("integration.", pageable)).isSameAs(matches);
   }
 }

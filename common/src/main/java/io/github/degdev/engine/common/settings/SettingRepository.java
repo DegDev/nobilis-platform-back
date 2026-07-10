@@ -16,6 +16,8 @@
 package io.github.degdev.engine.common.settings;
 
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /** Spring Data repository for {@link Setting}, keyed by its unique {@code key}. */
@@ -28,4 +30,13 @@ public interface SettingRepository extends JpaRepository<Setting, Long> {
    * @return the setting, or empty if none exists for {@code key}
    */
   Optional<Setting> findByKey(String key);
+
+  /**
+   * Lists settings whose key starts with {@code prefix}, a page at a time.
+   *
+   * @param prefix the key prefix to match
+   * @param pageable the page request
+   * @return the matching page of settings
+   */
+  Page<Setting> findByKeyStartingWith(String prefix, Pageable pageable);
 }
