@@ -2,7 +2,7 @@
 
 The documentary layer of conventions (what the formatter/linter can't catch). Machine layer:
 Spotless + google-java-format + Checkstyle (back), Prettier + angular-eslint (front), gated in CI
-before auto-deploy on merge to `dev`.
+on every PR/push. Release is a manual `mvn deploy`, not an auto-deploy on merge.
 
 Principle: **style is a nail in the build, not discipline or memory.** Tooling normalizes output
 regardless of who/what wrote the code.
@@ -42,6 +42,21 @@ Java Format, if Spring fluent/builder chains read better at 4-space.)
 - Join tables: composite PK (`PK(a_id, b_id)`), no surrogate id, unless the link is itself an
   audited entity (then it extends BaseEntity with its own id).
 - Unique constraints named `uq_<table>_<col>` (existing convention from V1 baseline).
+
+**Database migrations (Flyway):**
+- Flyway, SQL-first, forward-only.
+- Versions are GLOBAL across the classpath — when a host depends on multiple modules (e.g. admin
+  depends on both `common` and `auth`), all of their `db/migration` folders merge into ONE version
+  history. A module cannot see another module's next free number.
+- New migrations: `VYYYYMMDDHHMMSS__snake_desc.sql` (14-digit UTC timestamp), not sequential
+  `V<n>`. The global namespace makes sequential numbers collide across modules; a timestamp makes
+  that collision structurally impossible and self-evidently encodes apply order, with no central
+  number coordination needed.
+- Cutover, not rewrite: pre-existing sequential migrations (`common` V1, `auth` V1..V4) keep their
+  names — they're already applied and recorded in `flyway_schema_history` with checksums; renaming
+  an applied migration breaks Flyway validation. The timestamp format applies only to new
+  migrations going forward; sequential and timestamp names sort correctly together (a 14-digit
+  datetime always outranks a single/low digit).
 
 ## Frontend (Angular)
 
