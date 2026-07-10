@@ -234,7 +234,12 @@ class RolesCrudIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(
             jsonPath(
-                "$", containsInAnyOrder("ACCOUNT_MANAGE", "SETTINGS_MANAGE", "CONTENT_MANAGE")));
+                "$",
+                containsInAnyOrder(
+                    "ACCOUNT_MANAGE",
+                    "SETTINGS_MANAGE",
+                    "CONTENT_MANAGE",
+                    "NOTIFICATIONS_MANAGE")));
   }
 
   @Test
