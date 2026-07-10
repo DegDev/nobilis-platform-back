@@ -61,3 +61,65 @@ guess, not a decision; do not build from this paragraph.
 **Decision needed by:** Not urgent — resolves when a real screen (admin CMS editor, milestone 03
 pass 4, or a domain consumer) states a concrete image requirement. Revisit this entry then, not
 before.
+
+---
+
+## BL-003 — Migration ownership in a multi-runnable modular monolith (DECIDED)
+
+**Status:** Decided (operator-ratified 2026-07-10, in design discussion) — ready to implement, not
+deferred. Recorded here for provenance because it is a load-bearing architectural decision. NOTE:
+the decision was made by the operator in a design conversation AFTER the (read-only) recon, not by
+the recon itself — the recon deliberately made no pick; the operator chose the consolidate-in-common
+option afterward.
+
+**Trigger (the real defect that surfaced it):** When `app` was first started with a datasource
+profile (03-app-landing-cms, to read CMS content), Flyway failed validation on boot:
+`Detected applied migration not resolved locally: 2, 3, 4`. Root cause: one shared Postgres with one
+shared `flyway_schema_history`, but each runnable has a DIFFERENT subset of migrations on its
+classpath — `admin` depends on `common`+`auth` (sees V1, cms, V2, V3, V4), `app` depends on `common`
+only (sees V1, cms). When `app` runs Flyway it finds `auth`'s V2–V4 recorded as applied in the shared
+history but absent from its own classpath → validation fails. The same wall blocks the near-future
+case where `app` grows its OWN entities and needs its own migrations applied.
+
+**Options considered (recon + live Flyway 12.4 / Boot 4.1 verification via context7):**
+- *Per-module history table* (`spring.flyway.table=<module>_...` + baseline): Boot 4.1 autoconfigures
+  exactly ONE Flyway bean per context, and `common` migrations are needed by every runnable — so this
+  needs a separately-shared common history alongside each runnable's own, which the single-bean
+  autoconfig can't do without going fully programmatic. Rejected.
+- *Schema-per-module*: not blocked by any cross-module FK today (recon confirmed none exist), but
+  Postgres FKs can't cross schemas — the milestone-07 domain will almost certainly FK into
+  `auth.account`, which would break this. Rejected (fails on the first cross-module FK).
+- *Programmatic multiple Flyway instances* (`@DependsOn` before EMF, hand-rolled per module): highest
+  control, zero repo precedent, re-implements the migrate-before-EntityManagerFactory ordering Boot
+  gives for free. Rejected as unnecessary complexity for our structure.
+
+**Decision:** ALL migrations live in one place — `common/src/main/resources/db/migration` — regardless
+of which module's tables they create. Every runnable depends on `common`, so every runnable sees the
+IDENTICAL full migration set; there is no classpath-subset difference, so the shared history never
+disagrees with any runnable's local set. The bug dies by construction, not by suppression (NO
+`ignoreMigrationPatterns`, NO validate-off — those were explicitly rejected as band-aids).
+
+**Why this doesn't violate the module direction rule (`common ← auth ← admin`):** the rule governs
+CODE dependencies (who imports whose classes). Moving `.sql` DDL into `common` creates NO code edge —
+`Account`/`Role` classes stay in `auth`, no `common` class imports `auth`. The database SCHEMA is a
+single system-wide resource, not any one module's property; `common`, being the shared-by-all module,
+is the correct home for the shared-by-all schema. `common` "knowing" every module's tables is its job
+as the common module, not a leak.
+
+**Consequences / implementation scope (for the follow-up plan):**
+- Move `auth`'s `V2`/`V3`/`V4` from `auth/.../db/migration` into `common/.../db/migration`.
+- Remove the `FlywayAutoConfiguration` exclusion from `app` (and any future runnable) — with the full
+  set on the classpath there is nothing to conflict on; every runnable applies the same migrations
+  against the shared history idempotently.
+- Naming: `common` already uses the timestamp convention; `auth`'s V2–V4 are small sequential ints.
+  Decide during the plan whether to keep the mix (Flyway sorts V2 < V20260710… correctly) or rename —
+  but NEVER rename an ALREADY-APPLIED migration against a live DB without a baseline/repair step.
+- Handle the already-applied history: the dev DB already has V2–V4 applied under the old layout; the
+  plan must verify Flyway doesn't see the moved files as changed (checksum/location), or reset the dev
+  DB cleanly. Not a blind file move.
+- Coverage gap (recon finding D): NO existing test exercises the multi-runnable-shared-DB scenario —
+  every integration test spins its own fresh single-classpath container. The implementation MUST add a
+  test that migrates a persistent DB from one classpath then connects with a narrower one, or this
+  bug class stays untested.
+
+**Scope:** Engine (`common` migrations + runnable properties + a new integration test). No domain code.
