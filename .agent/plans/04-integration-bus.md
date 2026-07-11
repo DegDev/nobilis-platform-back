@@ -945,3 +945,165 @@ untouched (slice 4 already generalized it).
   .properties.example` placeholder that don't match what was actually merged (the as-built section
   below it is correct). Not fixed here to keep this an append-only change — flag for a future
   doc-cleanup pass.
+
+## Slice 6 — Scheduler harness (the LAST slice of milestone 04)
+
+**Scope**: backend only. Branch `04-scheduler`, cut from `main` (slices 1-5 merged, SMS live).
+
+**Applicable playbook**: `feature-optionality.md` **[anticipated]** — opt-in feature wiring, "a
+capability is off until the host explicitly enables it." Closest match in the index; stays unwritten
+until extracted from a fuller set of opt-in instances (crypto, Kafka bus, Telegram, SMS, ping-demo,
+and now scheduling all already follow this shape in code, but the playbook itself hasn't been
+written yet). No `crud-standard`/`import-export`/`async-consumer`/`integration-adapter` playbook fits
+a periodic-job mechanism.
+
+**Goal**: a GENERIC scheduled-job harness in the integration worker — the MECHANISM for periodic
+jobs (boot-time opt-in scheduling + one demo job proving it runs live). **Zero domain sweeper
+logic.** The `reserved_until` sweeper itself (real `Order` table, Pending→Available transition,
+`GetState` reconciliation) is milestone 07 — this slice prepares nothing beyond the periodic-run
+mechanism.
+
+**Recon basis**: `nobilis-platform-back` recon (this session, jetbrains-confirmed against merged
+code + context7-confirmed against Spring Boot 4.1) + a locked-forks web discussion, validated
+clean-room against Deg's pet project (`ExpiredPushDeviceDeleteScheduler.java`, package
+`dev.compo.b2b`) for the `@Scheduled(cron=...)` shape only — zero code ported. Forks below are
+LOCKED, not open for re-litigation at GATE-0.
+
+### Premise (recon-confirmed)
+- `@EnableScheduling` is absent repo-wide — `IntegrationApplication.java:22-27` is a bare
+  `@SpringBootApplication`. Zero `@Scheduled`/`reserved_until`/`sweeper` anywhere. Fully greenfield.
+- The pet project gates its job **inside the method body** (`@Value` string check, bean and its
+  `@Scheduled` registration always mount, cron always fires, the check only short-circuits the
+  work). That diverges from every `nobilis-platform-back` opt-in precedent — crypto
+  (`CryptoAutoConfiguration.java:33`), Kafka bus, Telegram (`TelegramNotificationTransport
+  .java:46`), SMS (`SmsNotificationTransport.java:55`), ping-demo (`PingDemoRunner.java:29-31`) —
+  which all gate at **boot time** via `@ConditionalOnProperty` so the bean never mounts when off.
+  This slice uses the nobilis boot-time-gate convention, not the pet project's in-method check.
+
+### Recon correction — no `AutoConfiguration.imports` entry for this slice
+Confirmed: `common`/`auth`/`admin`/`app` are **library** modules other hosts opt into by dependency,
+so their opt-in features are wired via `@AutoConfiguration` classes registered in
+`META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` (e.g.
+`CryptoAutoConfiguration`). `integration` is **not** consumed that way — it **is** the worker app
+itself (`IntegrationApplication`), and every existing opt-in piece inside it (`PingDemoRunner`,
+`TelegramNotificationTransport`, `SmsNotificationTransport`) is a plain `@Component`/`@Service` +
+`@ConditionalOnProperty`, picked up directly by `IntegrationApplication`'s own component scan — no
+imports file, no `integration` module has ever had one. The scheduler mirrors that: a plain
+`@Configuration` class (not `@AutoConfiguration`), same boot-time gate, same scan-pickup mechanism.
+No new `META-INF/spring/...` file this slice.
+
+### Locked forks
+1. **Abstraction level — THIN.** `@EnableScheduling` + ONE demo `@Scheduled` job. No
+   `ScheduledJob`-interface/registry. The `List<NotificationTransport>` auto-collection precedent
+   (`NotificationDispatchEventHandler.java:63-74`) was introduced with 2+ real transports already in
+   hand; the scheduler has **zero** real jobs today, so a registry would be speculation ahead of
+   milestone 07 (extract-don't-predict, `docs/playbooks/README.md:10-16`). If/when milestone 07 adds
+   a second job, the registry gets extracted then, from real use — not predicted now.
+2. **Opt-in — `@ConditionalOnProperty` boot-time gate.** Matches crypto/Kafka/Telegram/SMS/ping. Not
+   always-on (breaks every optional-feature convention in this repo); not the pet project's
+   in-method runtime flag.
+3. **`reserved_until` — mechanism only, sweeper shape deferred.** This slice ships the periodic-run
+   mechanism (a job runs on a schedule, config-driven, gated). The "scan rows past a timestamp → act"
+   shape stays undesigned until milestone 07, where the real `Order` table + `reserved_until` column
+   + claim state machine exist to design it against. No generic sweeper base now — no second
+   consumer to extract one from.
+4. **Demo job — yes, tick-logging, gated off by default.** A scheduler with zero live jobs has
+   nothing to prove running; unlike a transport (provably correct via a unit test alone), the
+   harness's *live* wiring (does `@EnableScheduling` actually activate, does the cron/fixedDelay
+   actually fire) has no other proof short of running it. Mirrors `PingDemoRunner`'s "test-only,
+   off by default" shape. Paired with a deterministic unit test that invokes the job method
+   **directly** — no Awaitility anywhere in this repo, don't wait for a real cron tick.
+5. **Enablement location — a dedicated `SchedulingConfiguration`.** `@Configuration` +
+   `@EnableScheduling`, gated by the same `@ConditionalOnProperty` as the demo job (or a slightly
+   broader "scheduling enabled" flag gating the config class, with the demo job additionally gated
+   on its own enabled flag — confirm exact two-flag-vs-one-flag shape at GATE-0). Not
+   `@EnableScheduling` directly on `IntegrationApplication` (keeps the worker's main class free of
+   opt-in feature annotations, consistent with how Telegram/SMS/ping-demo are separate classes, not
+   inlined into the main class).
+
+### Code location
+- `integration/.../schedule/SchedulingConfiguration.java` — new, `@Configuration`,
+  `@EnableScheduling`, `@ConditionalOnProperty(prefix = "nobilis.integration.scheduling", name =
+  "enabled")`. Package-scanned automatically by `IntegrationApplication` (no imports file, per the
+  recon correction above).
+- `integration/.../schedule/DemoTickJob.java` (naming TBD at GATE-0) — new, `@Component`,
+  `@ConditionalOnProperty(prefix = "nobilis.integration.scheduling.demo-tick", name = "enabled")`,
+  one `@Scheduled(cron = "${nobilis.integration.scheduling.demo-tick.cron}")` (or `fixedDelay`,
+  confirm at GATE-0 per context7's virtual-threads note) method that logs a tick. Off by default,
+  same two-property "off unless a real value is configured" shape as SMS's dual gate.
+- `integration/src/main/resources/application.properties` — document (not assign, or assign a safe
+  default cron with `enabled` left absent) the scheduling + demo-tick properties, mirroring the
+  Telegram/SMS comment convention.
+- `integration/src/test/.../schedule/DemoTickJobTest.java` — new, calls the job method directly,
+  asserts the tick happened (log capture or a simple counter/flag), no cron wait, no Awaitility.
+
+### Files to create / change
+
+Module touched: `integration` only. No `common`/other-module changes — this is worker-internal
+wiring, not a new library port.
+
+- `integration/.../schedule/SchedulingConfiguration.java` — new, `@EnableScheduling`, boot-time
+  gated.
+- `integration/.../schedule/DemoTickJob.java` — new, gated demo `@Scheduled` job.
+- `integration/src/test/.../schedule/DemoTickJobTest.java` — new, direct-invocation unit test.
+- `integration/src/main/resources/application.properties` — scheduling + demo-tick config keys.
+- `docs/sources-log.md` — rows for: scheduling enablement pattern (context7 citation), the
+  boot-time-gate decision vs. the pet project's in-method gate, the thin-not-registry decision, the
+  demo-job-gated-off-by-default decision.
+
+### Open questions
+1. One enabled-flag (scheduling itself always mounts when the module is enabled, demo job has its
+   own separate flag) vs. two independent flags from the start — confirm the minimal shape at
+   GATE-0; default to mirroring SMS's "every required property must be present" gate style if a
+   single flag suffices for both.
+2. `cron` vs `fixedDelay` for the demo job — context7 confirmed Boot 4.1's virtual-thread scheduler
+   (`spring.threads.virtual.enabled`, not currently set in this repo) recommends cron/fixed-rate over
+   fixed-delay when active; since virtual threads aren't enabled here, either works — pick whichever
+   is simpler to test deterministically at GATE-0.
+
+### Testing strategy
+
+**Backend**:
+- Unit test: `DemoTickJobTest` — invoke the job method directly, assert the tick side effect
+  happened (no live scheduling, no waiting for a real trigger).
+- No integration test asserting `@EnableScheduling` actually fires a live cron tick — not this
+  repo's convention (no Awaitility present), and the mechanism itself is a well-established Spring
+  Framework feature (context7-confirmed), not something this slice needs to re-prove at the
+  framework level.
+
+**Frontend**: none this slice.
+
+### Out of scope (name only — do not design, do not build)
+- Domain sweeper logic (the real `reserved_until` scan/reclaim job) — milestone 07.
+- `Order` reclaim, Pending→Available state transition — milestone 07.
+- `reserved_until` column on any real entity — milestone 07 (no such entity exists yet).
+- `GetState`/bank reconciliation — milestone 07.
+- A `ScheduledJob` registry abstraction — deferred until a second real job exists (per locked fork 1).
+
+### DoD
+- [ ] `SchedulingConfiguration`: `@EnableScheduling`, `@ConditionalOnProperty`-gated (boot-time), so
+      scheduling mounts only when enabled — plain `@Configuration` picked up by
+      `IntegrationApplication`'s component scan, no `AutoConfiguration.imports` entry (worker-app
+      wiring, not a library port).
+- [ ] One demo `@Scheduled` job (config-driven cron/fixedDelay), gated off by default, that logs a
+      tick.
+- [ ] Config: cron/interval + enable-flag property names (runnable-owns-config); demo job does not
+      run in prod unless explicitly enabled.
+- [ ] Deterministic test: invokes the demo job method directly, asserts it did its work — no
+      cron-tick wait, no Awaitility.
+- [ ] Worker still boots headless with JPA (existing behavior intact); scheduling absent (no
+      `TaskScheduler`/`@Scheduled` registration) when the flag is off.
+- [ ] `mvn -B verify` green across the full reactor.
+- [ ] `docs/sources-log.md` rows added: scheduling enablement (context7 citation), boot-time-gate
+      decision vs. the pet project's in-method gate, thin-not-registry decision, demo-job-gated-off
+      decision.
+
+### Risks
+- The demo job proves the harness mechanism, not any real periodic work — if milestone 07's sweeper
+  ends up needing a shape this harness doesn't anticipate (e.g. distributed-lock coordination across
+  multiple worker instances, which nothing here addresses), the harness may need extension rather
+  than being a drop-in fit. Accepted: this slice is deliberately mechanism-only, per "extract, don't
+  predict."
+- No generic sweeper base means milestone 07 designs its scan-and-act shape from scratch against the
+  real `Order` table — this slice does not reduce that design work, only the scheduling-activation
+  boilerplate around it.
