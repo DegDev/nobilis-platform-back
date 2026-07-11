@@ -358,7 +358,7 @@ The commit message an agent proposes at a commit-gate (STOP + report + proposed 
 
 - **Subject:** imperative mood, ≤72 chars, a Conventional-Commits type with scope in parens (`feat(scope): …`, `fix(scope): …`, `docs(scope): …`, `chore(scope): …`, `refactor(scope): …`). No trailing period.
 - **One blank line** between subject and body — mandatory, never omitted.
-- **Body:** wrapped prose in short paragraphs separated by blank lines, OR bullet points (`- `) for a list of discrete changes — whichever fits the change. Wrap body lines at roughly 72 chars.
+- **Body — default to bullet points (`- `), one per discrete change.** A commit touching more than one thing MUST use bullets, never a prose paragraph. Reason: Markdown renderers (GitHub PR descriptions especially) collapse single newlines inside a paragraph into one running line — a wrapped prose body that looks fine in `git log` renders as a solid brick on GitHub. Bullets survive both surfaces. Only a genuinely single-sentence body may stay prose; anything with 2+ points is bullets. Wrap body lines at roughly 72 chars.
 - **Blank line between distinct paragraphs/sections** in the body — a body is never one unbroken block.
 - **Optional trailing metadata** (a ticket reference, co-authored-by, etc.) after a blank line, at the very end.
 - **Factual, not a changelog dump:** what changed and why it changed — not a line-by-line diff summary.
