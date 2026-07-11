@@ -17,6 +17,7 @@ package io.github.degdev.engine.common.bus.kafka;
 
 import io.github.degdev.engine.common.bus.EventBus;
 import io.github.degdev.engine.common.bus.EventHandler;
+import io.github.degdev.engine.common.bus.TerminalBusException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,8 +38,11 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * Mounts the Kafka adapter behind {@link EventBus}/{@link EventHandler}, opt-in on {@code
@@ -54,6 +58,12 @@ import org.springframework.kafka.listener.MessageListenerContainer;
  * {@code @KafkaListener}) so the topic set is computed at runtime from every registered {@link
  * EventHandler} bean's {@link EventHandler#topic()} — the listener container is created only when
  * at least one handler exists.
+ *
+ * <p>Retry + DLQ: auto-commit is disabled and {@link ContainerProperties.AckMode#RECORD} is used so
+ * a failed record isn't acked until the handler succeeds, letting {@link DefaultErrorHandler}
+ * redeliver it. A handler throwing a broker-neutral {@code TerminalBusException} skips retry
+ * entirely; any other exception is retried per {@link KafkaEventBusProperties#retryAttempts()}
+ * before {@link DeadLetterPublishingRecoverer} publishes the record to {@code <topic>-dlt}.
  */
 @AutoConfiguration
 @ConditionalOnProperty(prefix = "nobilis.integration", name = "bus", havingValue = "kafka")
@@ -88,18 +98,23 @@ public class KafkaEventBusAutoConfiguration {
     configs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     configs.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     configs.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    configs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
     return new DefaultKafkaConsumerFactory<>(configs);
   }
 
   @Bean
   @ConditionalOnBean(EventHandler.class)
   public MessageListenerContainer eventBusListenerContainer(
-      ConsumerFactory<String, String> eventBusConsumerFactory, List<EventHandler> handlers) {
+      ConsumerFactory<String, String> eventBusConsumerFactory,
+      KafkaTemplate<String, String> eventBusKafkaTemplate,
+      KafkaEventBusProperties props,
+      List<EventHandler> handlers) {
     Map<String, List<EventHandler>> handlersByTopic =
         handlers.stream().collect(Collectors.groupingBy(EventHandler::topic));
 
     ContainerProperties containerProperties =
         new ContainerProperties(handlersByTopic.keySet().toArray(new String[0]));
+    containerProperties.setAckMode(ContainerProperties.AckMode.RECORD);
     containerProperties.setMessageListener(
         (MessageListener<String, String>)
             record ->
@@ -107,6 +122,16 @@ public class KafkaEventBusAutoConfiguration {
                     .getOrDefault(record.topic(), List.of())
                     .forEach(handler -> handler.handle(record.value())));
 
-    return new ConcurrentMessageListenerContainer<>(eventBusConsumerFactory, containerProperties);
+    ConcurrentMessageListenerContainer<String, String> container =
+        new ConcurrentMessageListenerContainer<>(eventBusConsumerFactory, containerProperties);
+
+    DefaultErrorHandler errorHandler =
+        new DefaultErrorHandler(
+            new DeadLetterPublishingRecoverer(eventBusKafkaTemplate),
+            new FixedBackOff(props.retryBackoffMs(), props.retryAttempts()));
+    errorHandler.addNotRetryableExceptions(TerminalBusException.class);
+    container.setCommonErrorHandler(errorHandler);
+
+    return container;
   }
 }
