@@ -596,6 +596,21 @@ gitleaks' generic built-in rule (unverified whether that catches this exact shap
 Telegram-token-shaped pattern to `.gitleaks.toml`** (digits `:` base64url-ish suffix) alongside the
 existing key rule, allowlisting `${ENV}` placeholders and `*.example` files the same way.
 
+**As-built delta.** The merged code diverged from this planned config shape on two points. (1) No
+`@ConfigurationProperties` class was added — `TelegramNotificationTransport` `@Value`-injects the
+bot token directly in its constructor, since it's a single bean with one property, not a Kafka-style
+adapter needing its own config/autoconfig pair (resolved per fork 2 below, "pick the simpler shape
+unless a second Telegram-scoped property emerges" — none did). (2) The property is genuinely
+**absent** from `integration/application.properties`, with a comment explaining why, rather than the
+planned `${NOBILIS_NOTIFICATION_TELEGRAM_BOT_TOKEN:}` empty-default placeholder — an empty-string
+default still satisfies `@ConditionalOnProperty`, which would have wrongly mounted the adapter with a
+broken token. There is also no `application-local.properties.example` anywhere in the repo; that file
+never materialized. The gitleaks Telegram-token rule shipped as planned. Slice 5's SMS transport
+followed this same as-built shape (`@Value` injection, key absent with comment, no `.example`). See
+`TelegramNotificationTransport`/`SmsNotificationTransport` and `docs/sources-log.md` rows for
+"04-integration-bus slice 4/5" (the `@ConditionalOnProperty`/`@Value` gating rows) — those are the
+authority over this section's planned text.
+
 ### Code location
 - `integration/.../dispatch/TelegramNotificationTransport.java` — new, `@Service` (or equivalent)
   `@ConditionalOnProperty(prefix = "nobilis.notification.telegram", name = "bot-token")`, implements
