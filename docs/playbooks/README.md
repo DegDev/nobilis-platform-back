@@ -30,6 +30,11 @@ inside each file. The contract (DTOs, endpoints) is the seam between the pair.
   ONLY when its store (DB) exists and never half-mounts on the stateless host: service gated on the
   EMF, unconditional `@AutoConfigurationPackage`, controller via a service-gated auto-config AND in
   the component-scan exclude. Backend only (JVM/Spring wiring). **[ready]**
+- `async-consumer.md` — a Kafka consumer in the integration worker: topic → handler → typed
+  retriable/terminal failure → retry then DLQ, and a delivery adapter (transport) plugs in via
+  auto-collected `List<X>` with zero dispatcher edits. The template for all async work
+  (notifications now; moderation, LLM jobs later). Backend only (JVM/Spring + Kafka wiring).
+  **[ready]**
 
 ## Backend playbooks (anticipated)
 
@@ -40,9 +45,6 @@ inside each file. The contract (DTOs, endpoints) is the seam between the pair.
   **import format** (round-trip), not a generic "dump the table to a sheet". Defines the format
   contract. Fullstack pair in front: `import-export-roundtrip-frontend.md`.
   **[anticipated — milestone 05/07]**
-- `async-consumer.md` — a Kafka consumer in the integration worker: topic → handler → DLQ topic on
-  failure (no built-in requeue in Kafka). The template for all async work (notifications,
-  moderation, LLM jobs). **[anticipated — milestone 04]**
 - `notification-dispatch.md` — event → template (locale) → transport (email / SMS / Telegram),
   driven by the generic dispatcher. **[anticipated — milestone 04]**
 - `integration-adapter.md` — an external-service adapter (request, signing, reconciliation via
