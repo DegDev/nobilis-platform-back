@@ -81,8 +81,12 @@ Subject and body are visually separated — never one dense brick.
 - **Subject:** imperative, ≤72 chars, Conventional-Commits type + scope (`feat(scope): …`,
   `fix(scope): …`, `docs(scope): …`, `chore(scope): …`, `refactor(scope): …`). No trailing period.
 - **One blank line** between subject and body — mandatory.
-- **Body:** wrapped prose in short paragraphs separated by blank lines, or bullet points (`- `) for
-  a list of discrete changes. Wrap body lines at roughly 72 chars.
+- **Body: default to bullet points (`- `), one per discrete change.** A commit that touches more
+  than one thing MUST use bullets, not a prose paragraph. Reason: Markdown renderers (GitHub PR
+  descriptions especially) collapse single newlines inside a paragraph into one running line — a
+  wrapped prose paragraph that looks fine in `git log` renders as a solid brick on GitHub. Bullets
+  survive both. A single-sentence body may stay prose; anything with 2+ points is bullets.
+- Wrap body lines at roughly 72 chars.
 - **Blank line** between distinct paragraphs/sections in the body.
 - **Optional trailing metadata** (refs, co-authored-by) after a blank line, at the end.
 - Factual — what changed and why, not a changelog dump.
