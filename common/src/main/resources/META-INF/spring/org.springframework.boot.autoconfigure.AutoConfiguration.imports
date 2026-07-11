@@ -4,3 +4,4 @@ io.github.degdev.engine.common.i18n.I18nAutoConfiguration
 io.github.degdev.engine.common.persistence.PersistenceAutoConfiguration
 io.github.degdev.engine.common.settings.SettingsAutoConfiguration
 io.github.degdev.engine.common.notifications.NotificationsAutoConfiguration
+io.github.degdev.engine.common.bus.kafka.KafkaEventBusAutoConfiguration

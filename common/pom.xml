@@ -57,6 +57,12 @@
       <optional>true</optional>
     </dependency>
 
+    <!-- EventBus port's Kafka adapter. Version managed by the spring-boot-starter-parent BOM. -->
+    <dependency>
+      <groupId>org.springframework.kafka</groupId>
+      <artifactId>spring-kafka</artifactId>
+    </dependency>
+
     <!-- Tests: JUnit 5 + Mockito (starter) and Testcontainers Postgres for the Flyway/JPA slice. -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -76,6 +82,12 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Testcontainers Kafka (KRaft mode) for the EventBus Kafka-adapter round-trip test. -->
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-kafka</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
