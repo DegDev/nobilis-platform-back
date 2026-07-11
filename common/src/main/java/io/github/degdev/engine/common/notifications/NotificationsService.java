@@ -298,6 +298,43 @@ public class NotificationsService {
   }
 
   // ──────────────────────────────────────────────────────────────────────
+  // Dispatch read path (milestone 04)
+  // ──────────────────────────────────────────────────────────────────────
+
+  /**
+   * Dispatch read path: the translation to send for a type + transport + locale, resolving the
+   * exact locale then falling back to {@code ru} per {@link LocaleResolver}'s contract, same
+   * fallback shape as {@code ContentBlockService#readPublished}. Never errors on bad input; a
+   * disabled type, an absent type/template, or no matching translation simply yields no result.
+   *
+   * @param typeKey the notification type key
+   * @param transport the transport channel
+   * @param locale the raw requested locale code; may be blank/null
+   * @return the resolved translation, or empty if the type is disabled/absent, the template is
+   *     absent, or it has no translation in the resolved locale nor the {@code ru} fallback
+   */
+  @Transactional(readOnly = true)
+  public Optional<NotificationTemplateTranslation> resolveForDispatch(
+      String typeKey, Transport transport, String locale) {
+    return typeRepository
+        .findByKey(typeKey)
+        .filter(NotificationType::isEnabled)
+        .flatMap(
+            type ->
+                templateRepository
+                    .findByTypeIdAndTransport(type.getId(), transport)
+                    .map(NotificationsService::withTranslationsLoaded))
+        .flatMap(template -> resolveTranslation(template, locale));
+  }
+
+  private Optional<NotificationTemplateTranslation> resolveTranslation(
+      NotificationTemplate template, String locale) {
+    String resolvedTag = localeResolver.resolve(locale).toLanguageTag();
+    return translationFor(template, resolvedTag)
+        .or(() -> translationFor(template, LocaleResolver.DEFAULT_LOCALE.toLanguageTag()));
+  }
+
+  // ──────────────────────────────────────────────────────────────────────
   // Helpers
   // ──────────────────────────────────────────────────────────────────────
 
