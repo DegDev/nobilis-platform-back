@@ -32,8 +32,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * (Testcontainers). Proves that, with a JPA {@code EntityManagerFactory} present, auth's Spring
  * Data repositories are beans (discovered via {@link
  * io.github.degdev.engine.auth.persistence.AuthPersistenceAutoConfiguration}'s auto-configuration
- * package), and that Flyway's {@code V4} seed created the engine's default {@code ADMIN} role
- * carrying exactly the two engine permissions.
+ * package), and that Flyway's {@code V20260710120002__seed_admin_role.sql} seed created the
+ * engine's default {@code ADMIN} role carrying exactly the two engine permissions.
  *
  * <p>{@code @Transactional} keeps one session open so the lazy {@code role_permission} collection
  * loads on read-back.
