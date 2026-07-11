@@ -74,6 +74,22 @@ Java Format, if Spring fluent/builder chains read better at 4-space.)
 - **Pin formatter versions** — otherwise format drifts between machines and CI.
 - Tests — next to the feature; unified test-naming conventions (to be settled with the first module).
 
+## Commit messages
+
+Subject and body are visually separated — never one dense brick.
+
+- **Subject:** imperative, ≤72 chars, Conventional-Commits type + scope (`feat(scope): …`,
+  `fix(scope): …`, `docs(scope): …`, `chore(scope): …`, `refactor(scope): …`). No trailing period.
+- **One blank line** between subject and body — mandatory.
+- **Body:** wrapped prose in short paragraphs separated by blank lines, or bullet points (`- `) for
+  a list of discrete changes. Wrap body lines at roughly 72 chars.
+- **Blank line** between distinct paragraphs/sections in the body.
+- **Optional trailing metadata** (refs, co-authored-by) after a blank line, at the end.
+- Factual — what changed and why, not a changelog dump.
+
+Applies to every commit in this repo, including a proposed message an agent produces at the
+commit-gate (see `CLAUDE.md`).
+
 ## Why public standards, not "how previous projects did it"
 
 Adopting a named public standard (Google Java Style, Angular Style Guide) is a sources-log for code

@@ -348,7 +348,22 @@ Long sessions degrade as the window fills; keep it clean deliberately. Agent-neu
 
 ## Deterministic gates: hooks, not prose
 
-A commit-gate (block direct commits/pushes to protected branches; feature branches free) and an end-of-turn build check are not advisory prose in the instructions file — they are `PreToolUse`/`Stop` hooks committed to the repo. A rule as text erodes and gets bypassed; a rule as a hook is a deterministic boundary: it parses command chains and the `-C`/`cd`/cwd of the *target* repo to read that repo's branch (not the hook's own cwd), and the end-of-turn check ignores red test-spec noise, gating only application code. Prefer a barrier to an instruction wherever one exists. The *format* of the commit message (not the permission to commit) stays a playbook concern, separate from the gate.
+A commit-gate (block direct commits/pushes to protected branches; feature branches free) and an end-of-turn build check are not advisory prose in the instructions file — they are `PreToolUse`/`Stop` hooks committed to the repo. A rule as text erodes and gets bypassed; a rule as a hook is a deterministic boundary: it parses command chains and the `-C`/`cd`/cwd of the *target* repo to read that repo's branch (not the hook's own cwd), and the end-of-turn check ignores red test-spec noise, gating only application code. Prefer a barrier to an instruction wherever one exists. The *format* of the commit message (not the permission to commit) stays a playbook concern, separate from the gate — spelled out next.
+
+---
+
+## Commit-message format — a proposed message is structured, not a brick
+
+The commit message an agent proposes at a commit-gate (STOP + report + proposed commit message) follows a fixed shape — subject and body do not run together as one dense paragraph:
+
+- **Subject:** imperative mood, ≤72 chars, a Conventional-Commits type with scope in parens (`feat(scope): …`, `fix(scope): …`, `docs(scope): …`, `chore(scope): …`, `refactor(scope): …`). No trailing period.
+- **One blank line** between subject and body — mandatory, never omitted.
+- **Body:** wrapped prose in short paragraphs separated by blank lines, OR bullet points (`- `) for a list of discrete changes — whichever fits the change. Wrap body lines at roughly 72 chars.
+- **Blank line between distinct paragraphs/sections** in the body — a body is never one unbroken block.
+- **Optional trailing metadata** (a ticket reference, co-authored-by, etc.) after a blank line, at the very end.
+- **Factual, not a changelog dump:** what changed and why it changed — not a line-by-line diff summary.
+
+This shape applies to every proposed commit message at a commit-gate, in every project — it is part of the STOP + report contract, not a one-off style preference.
 
 ---
 
