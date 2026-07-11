@@ -280,3 +280,48 @@ None this slice.
   implementation for longer than planned. Accepted risk, not a blocker.
 - No Mailpit-Testcontainers precedent in this repo — first use of `GenericContainer` here if chosen;
   slightly more setup risk than reusing an established Testcontainers module.
+
+## Slice 2 — CLOSED, as-built (2026-07-11)
+
+Implemented per the locked decisions above, with the open questions resolved as follows (full
+rationale in `docs/sources-log.md`, the four `04-integration-bus slice 2` rows):
+
+1. **DB access**: exclusion line removed from `integration/application.properties` entirely (not
+   moved to a local profile) — the worker has no stateless mode left after this slice.
+   `spring.datasource.*`/`spring.mail.*` set directly in that base file via the repo's standard
+   `${VAR:dev-default}` placeholder pattern.
+2. **`NotificationEvent` package** → `common/.../notifications/` (open question 2), not `bus/`.
+3. **Jackson dependency**: NOT classic `com.fasterxml.jackson.databind.ObjectMapper` as proposed —
+   GATE-0 miss, caught at boot: Spring Boot 4.1 defaults to **Jackson 3**
+   (`tools.jackson.databind.json.JsonMapper`, via `spring-boot-starter-json`); Jackson 2 support is
+   deprecated. `common`'s own `dependency:tree` confirmed no Jackson bean was transitively available
+   either way — this was a genuine "verify the library API before writing code" miss, not an
+   ambiguity the plan anticipated. Fixed in `integration` only (common needed no direct dependency;
+   `NotificationEvent` itself has no Jackson import).
+4. **Mailpit test approach**: `GenericContainer("axllent/mailpit:latest")`, not the live `stack.yml`
+   instance — hermetic, mirrors the repo's existing Kafka/Postgres Testcontainers convention.
+5. **`isEnabled()`**: confirmed correct as proposed (Lombok `@Getter` on the `boolean` field).
+
+**Naming, as built** (open question 1 — all matched the proposals, no changes):
+`NotificationDispatchEventHandler`, `NotificationTransport`, `EmailNotificationTransport`, all in
+`integration/.../dispatch/`. One deviation from the `PingEventHandler` precedent: the dispatcher is
+a plain `@Component`, NOT `@ConditionalOnProperty(bus=kafka)` — broker-neutral per `EventHandler`'s
+own contract, unlike `PingEventHandler` which is deliberately Kafka-adapter-specific proof-of-pipe
+glue (see sources-log for the full reasoning).
+
+**Files changed**:
+- `common/.../notifications/NotificationEvent.java` (new record).
+- `common/.../notifications/NotificationsService.java` — added `resolveForDispatch`.
+- `common/src/test/.../notifications/NotificationsServiceTest.java` (new, 5 tests).
+- `integration/.../dispatch/{NotificationTransport,EmailNotificationTransport,
+  NotificationDispatchEventHandler}.java` (new).
+- `integration/src/test/.../dispatch/NotificationDispatchEventHandlerIntegrationTest.java` (new).
+- `integration/pom.xml` — added Lombok, `spring-boot-starter-mail`, `spring-boot-starter-json`,
+  test deps (`spring-boot-starter-test`, `spring-boot-testcontainers`,
+  `testcontainers-junit-jupiter`, `testcontainers-postgresql`).
+- `integration/src/main/resources/application.properties` — removed the DataSource/JPA/Flyway
+  exclusion, added datasource + mail properties.
+
+**DoD met**: `mvn -B verify` green across the full reactor (66 common tests incl.
+`KafkaEventBusIntegrationTest` regression-passing, 1 integration-module test — the full
+event→resolve→email round trip against real Postgres + Mailpit containers).
