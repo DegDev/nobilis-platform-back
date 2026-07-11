@@ -16,6 +16,7 @@
 package io.github.degdev.engine.common.cms;
 
 import io.github.degdev.engine.common.i18n.LocaleResolver;
+import io.github.degdev.engine.common.i18n.UnsupportedLocaleException;
 import java.util.Locale;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Write operations REJECT rather than silently correct: a duplicate {@code key} on create throws
  * {@link ContentBlockConflictException}; an operation naming an unknown block or translation throws
  * {@link ContentBlockNotFoundException}; upserting or removing a translation with a
- * blank/unsupported locale throws {@link UnsupportedLocaleException}. The public read path ({@link
+ * blank/unsupported locale throws {@link
+ * io.github.degdev.engine.common.i18n.UnsupportedLocaleException}. The public read path ({@link
  * #readPublished}) is the opposite by design — it never errors, falling back to {@code ru} per
  * {@link LocaleResolver}'s locked contract, and only ever sees {@link ContentStatus#PUBLISHED}
  * blocks.

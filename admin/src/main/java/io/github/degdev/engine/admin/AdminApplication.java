@@ -17,6 +17,8 @@ package io.github.degdev.engine.admin;
 
 import io.github.degdev.engine.admin.accounts.AccountController;
 import io.github.degdev.engine.admin.cms.ContentBlockController;
+import io.github.degdev.engine.admin.notifications.NotificationTemplateController;
+import io.github.degdev.engine.admin.notifications.NotificationTypeController;
 import io.github.degdev.engine.admin.roles.RoleController;
 import io.github.degdev.engine.admin.settings.SettingsController;
 import org.springframework.boot.SpringApplication;
@@ -62,7 +64,9 @@ import org.springframework.context.annotation.FilterType;
             SettingsController.class,
             RoleController.class,
             AccountController.class,
-            ContentBlockController.class
+            ContentBlockController.class,
+            NotificationTypeController.class,
+            NotificationTemplateController.class
           })
     })
 public class AdminApplication {

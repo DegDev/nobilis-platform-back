@@ -21,7 +21,9 @@ import io.github.degdev.engine.auth.role.RoleConflictException;
 import io.github.degdev.engine.auth.role.UnknownPermissionException;
 import io.github.degdev.engine.common.cms.ContentBlockConflictException;
 import io.github.degdev.engine.common.cms.ContentBlockNotFoundException;
-import io.github.degdev.engine.common.cms.UnsupportedLocaleException;
+import io.github.degdev.engine.common.i18n.UnsupportedLocaleException;
+import io.github.degdev.engine.common.notifications.NotificationConflictException;
+import io.github.degdev.engine.common.notifications.NotificationTypeNotFoundException;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -182,7 +184,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   }
 
   /**
-   * Maps a translation write naming a blank or unsupported locale to {@code 400}.
+   * Maps a translation write (CMS or notifications) naming a blank or unsupported locale to {@code
+   * 400}. Single handler for the shared {@link UnsupportedLocaleException}.
    *
    * @param ex the unsupported-locale signal
    * @return a {@code 400} problem detail naming the rejected locale
@@ -190,6 +193,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(UnsupportedLocaleException.class)
   public ProblemDetail handleUnsupportedLocale(UnsupportedLocaleException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  /**
+   * Maps a notification state conflict (duplicate type key or duplicate type+transport template) to
+   * {@code 409}.
+   */
+  @ExceptionHandler(NotificationConflictException.class)
+  public ProblemDetail handleNotificationConflict(NotificationConflictException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+  }
+
+  /** Maps a request naming an unknown notification type/template/translation to {@code 404}. */
+  @ExceptionHandler(NotificationTypeNotFoundException.class)
+  public ProblemDetail handleNotificationTypeNotFound(NotificationTypeNotFoundException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
   }
 
   /**

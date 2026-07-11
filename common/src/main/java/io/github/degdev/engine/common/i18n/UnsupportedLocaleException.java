@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.github.degdev.engine.common.cms;
+package io.github.degdev.engine.common.i18n;
 
 /**
  * Signals that a translation write (upsert or remove) named a blank or unsupported locale code.
- * Only the write path rejects this — the public read path never errors, it falls back to {@code ru}
- * per {@link io.github.degdev.engine.common.i18n.LocaleResolver}'s contract. A domain signal,
- * deliberately free of any HTTP/web type; the admin layer maps it to an RFC 9457 {@code 400 Bad
- * Request}.
+ * Shared across features (CMS, notifications) — only the write path rejects this; the public read
+ * path never errors, it falls back to {@code ru} per {@link LocaleResolver}'s contract. A domain
+ * signal, deliberately free of any HTTP/web type; the admin layer maps it to an RFC 9457 {@code 400
+ * Bad Request}.
  */
 public class UnsupportedLocaleException extends RuntimeException {
 

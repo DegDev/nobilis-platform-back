@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import io.github.degdev.engine.common.i18n.LocaleResolver;
+import io.github.degdev.engine.common.i18n.UnsupportedLocaleException;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

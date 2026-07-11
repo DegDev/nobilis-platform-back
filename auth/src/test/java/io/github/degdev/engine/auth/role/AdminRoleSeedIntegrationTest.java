@@ -56,12 +56,11 @@ class AdminRoleSeedIntegrationTest {
   }
 
   @Test
-  void v4SeedsTheDefaultAdminRoleWithTheTwoEnginePermissions() {
+  void seedsTheDefaultAdminRoleWithAllEnginePermissions() {
     Role admin = roleRepository.findByCode("ADMIN").orElseThrow();
 
     assertThat(admin.getName()).isEqualTo("Administrator");
     assertThat(admin.getPermissions())
-        .containsExactlyInAnyOrder(
-            EnginePermissions.ACCOUNT_MANAGE, EnginePermissions.SETTINGS_MANAGE);
+        .containsExactlyInAnyOrder(EnginePermissions.ALL.toArray(new String[0]));
   }
 }
