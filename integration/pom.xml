@@ -39,6 +39,16 @@
     </dependency>
 
     <!--
+      RestClient (slice 4) for the Telegram transport's Bot API calls. Plain spring-web, NOT
+      spring-boot-starter-web — this is a headless worker (spring.main.web-application-type=none);
+      the starter would pull in an embedded Tomcat this process never needs.
+    -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-web</artifactId>
+    </dependency>
+
+    <!--
       NotificationEvent (de)serialization for bus payloads. Jackson 3 is Spring Boot 4.1's default/
       preferred JSON library (Jackson 2 support is deprecated); this starter auto-configures a
       JsonMapper bean (context7-confirmed: plain spring-boot-starter alone does not).

@@ -22,6 +22,16 @@ secretGroup = 1
 entropy = 3.5
 keywords = ["key", "secret", "password", "passwd", "token"]
 
+[[rules]]
+id = "nobilis-telegram-bot-token"
+description = "Telegram Bot API token (bot_id:secret shape)"
+# The nobilis-base64-256bit-key rule above only matches a 44-char Base64 value — a Telegram bot
+# token (e.g. 123456789:ABCdefGhIJKlmNoPQRstuVWXyz1234567890, per core.telegram.org/bots/api) has a
+# different shape and would slip past it. Matches the bot-id ':' secret structure directly (a bare
+# property NAME with no value, and ${ENV} placeholders, do not match).
+regex = '''[0-9]{8,10}:[A-Za-z0-9_-]{34,36}'''
+entropy = 3.5
+
 [allowlist]
 description = "Fake samples and placeholders that must never trip the scan"
 # *.example / *.example.<ext> files carry intentionally-fake structural samples only;
