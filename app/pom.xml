@@ -33,10 +33,10 @@
       <scope>test</scope>
     </dependency>
     <!--
-      Testcontainers Postgres for the NB-MIGRATIONS shared-database regression slice: boots the host
-      with a datasource against a persistent, already-migrated container. JPA/Flyway/driver come
-      transitively from common; these test-scoped artifacts do not, so they are declared here.
-      Versions are managed by the BOM.
+      Testcontainers Postgres for the NB-MIGRATIONS shared-database regression slice and the
+      datasource-profile CMS read-path integration test: boots the host with a datasource against
+      a persistent, already-migrated container. JPA/Flyway/driver come transitively from common;
+      these test-scoped artifacts do not, so they are declared here. Versions are managed by the BOM.
     -->
     <dependency>
       <groupId>org.springframework.boot</groupId>

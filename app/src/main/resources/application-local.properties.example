@@ -1,0 +1,17 @@
+# Local dev profile for the portal host — TEMPLATE (placeholders only, safe to commit).
+#
+# Copy to application-local.properties (gitignored via *-local.properties), replace the
+# placeholders with REAL values, then run the host with the local profile:
+#   mvn -pl app spring-boot:run -Dspring-boot.run.profiles=local
+
+# --- Turn the database ON for local dev -----------------------------------------------------------
+# The base application.properties excludes the DataSource/JPA/Flyway auto-configurations (stateless
+# default). Reset the list to EMPTY here to un-exclude them, then point at the SAME dev Postgres the
+# admin host uses (one shared database, two runnables) — never a separate portal-only DB. Flyway
+# applies the engine migrations from common, and ddl-auto=validate proves entity↔migration parity.
+spring.autoconfigure.exclude=
+spring.datasource.url=${NOBILIS_DB_URL:jdbc:postgresql://localhost:5433/nobilis}
+spring.datasource.username=${NOBILIS_DB_USERNAME:nobilis}
+spring.datasource.password=${NOBILIS_DB_PASSWORD:<db-password>}
+spring.jpa.hibernate.ddl-auto=validate
+spring.jpa.open-in-view=false

@@ -17,7 +17,9 @@ package io.github.degdev.engine.app;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.github.degdev.engine.app.content.PortalContentController;
 import io.github.degdev.engine.app.health.HealthController;
+import io.github.degdev.engine.common.cms.ContentBlockService;
 import io.github.degdev.engine.common.crypto.CryptoService;
 import io.github.degdev.engine.common.i18n.LocaleResolver;
 import io.github.degdev.engine.common.persistence.SystemAuditorAware;
@@ -37,6 +39,9 @@ import org.springframework.context.ApplicationContext;
  * <p>Also pins which of {@code common}'s auto-configurations reach a portal host: i18n mounts
  * unconditionally, while crypto (gated on {@code nobilis.crypto.master-key}) and JPA auditing
  * (gated on an {@code EntityManagerFactory}) correctly stay absent — the portal supplies neither.
+ * The CMS read path ({@link ContentBlockService}/{@link PortalContentController}) is gated on the
+ * same {@code EntityManagerFactory} and so is absent here too — the DB-enabled host mounts both,
+ * proven by {@code PortalContentIntegrationTest}.
  */
 @SpringBootTest
 class AppApplicationTest {
@@ -59,5 +64,14 @@ class AppApplicationTest {
     // Crypto needs a master key, auditing needs a JPA EntityManagerFactory; the portal has neither.
     assertThat(context.getBeanNamesForType(CryptoService.class)).isEmpty();
     assertThat(context.getBeanNamesForType(SystemAuditorAware.class)).isEmpty();
+  }
+
+  @Test
+  void doesNotMountTheCmsReadPathWithoutAStore() {
+    // No EntityManagerFactory → no ContentBlockService (ContentBlockAutoConfiguration is gated on
+    // it) → no PortalContentController (PortalContentWebAutoConfiguration is gated on the service).
+    // The DB-enabled host gets both, proven by PortalContentIntegrationTest.
+    assertThat(context.getBeanNamesForType(ContentBlockService.class)).isEmpty();
+    assertThat(context.getBeanNamesForType(PortalContentController.class)).isEmpty();
   }
 }
