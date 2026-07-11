@@ -15,13 +15,16 @@
  */
 package io.github.degdev.engine.integration.dispatch;
 
+import io.github.degdev.engine.common.notifications.Transport;
+
 /**
  * Delivery side of a notification transport channel — one adapter per {@link
  * io.github.degdev.engine.common.notifications.Transport}. Mirrors {@link
  * io.github.degdev.engine.common.bus.EventBus}'s single-method port shape: the dispatcher depends
- * on this interface, never on a concrete sender. Email is the only adapter this slice; Telegram and
- * SMS (named, locked future consumers — {@code Transport.TELEGRAM}/{@code Transport.SMS}) get their
- * own adapters behind this same port in a later slice.
+ * on this interface, never on a concrete sender. Every adapter declares the {@link Transport} it
+ * handles via {@link #transport()}, so the dispatcher can route by {@code
+ * NotificationEvent.transport()} without knowing about concrete adapter types (slice 4 — adding
+ * Telegram, the port's second adapter).
  */
 public interface NotificationTransport {
 
@@ -33,4 +36,11 @@ public interface NotificationTransport {
    * @param body the message body
    */
   void send(String recipient, String subject, String body);
+
+  /**
+   * The channel this adapter delivers over.
+   *
+   * @return the {@link Transport} this adapter handles
+   */
+  Transport transport();
 }

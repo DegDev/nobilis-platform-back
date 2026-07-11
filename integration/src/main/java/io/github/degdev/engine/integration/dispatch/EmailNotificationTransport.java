@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.integration.dispatch;
 
+import io.github.degdev.engine.common.notifications.Transport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -23,9 +24,8 @@ import org.springframework.stereotype.Service;
 /**
  * {@link NotificationTransport} adapter for {@code Transport.EMAIL}, sent via {@link
  * JavaMailSender} (Spring Boot's {@code spring-boot-starter-mail} auto-configuration, pointed at
- * Mailpit in dev via {@code spring.mail.host}). The only transport adapter this slice, so a plain
- * {@code @Service} singleton is sufficient — port-selection between multiple transports only
- * becomes relevant once Telegram/SMS adapters exist.
+ * Mailpit in dev via {@code spring.mail.host}). Unconditional {@code @Service} — Mailpit has a
+ * working dev default, unlike the Telegram adapter which requires a bot token to be useful.
  */
 @Service
 @RequiredArgsConstructor
@@ -40,5 +40,10 @@ class EmailNotificationTransport implements NotificationTransport {
     message.setSubject(subject);
     message.setText(body);
     mailSender.send(message);
+  }
+
+  @Override
+  public Transport transport() {
+    return Transport.EMAIL;
   }
 }

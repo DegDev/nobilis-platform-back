@@ -515,3 +515,255 @@ proof performed on the new retry/DLQ test: commenting out `container.setCommonEr
 made both new test cases fail (`expected: "retry-me"/"terminal-me" but was: null`, confirmed by a live
 `mvn test -Dtest=KafkaEventBusRetryDlqIntegrationTest` run); restoring the line turned them green again.
 `docs/sources-log.md` gained the four rows listed above.
+
+## Slice 4 — Telegram transport (send-only)
+
+**Scope**: backend only. Branch `04-telegram-transport`, cut from `main` (slices 1-3 merged).
+
+**Applicable playbook**: `notification-dispatch.md` **[anticipated]** — this slice is a direct
+instance of "event → template (locale) → transport (email / SMS / Telegram)"; per "extract, don't
+predict" it stays unwritten until a second transport actually exists behind the port, then gets
+extracted from slices 2+4 together (email alone wasn't enough evidence for the generic pattern).
+
+**Goal**: a `TelegramNotificationTransport` adapter behind the existing `NotificationTransport` port
+that sends a message to a Telegram chat, mirroring `EmailNotificationTransport`'s shape. **Send-only.**
+
+**Recon basis**: `nobilis-platform-back` recon (this session) + a locked-forks web discussion —
+forks below are LOCKED, not open for re-litigation at GATE-0.
+
+### Blocker (fork 1) — dispatcher transport selection
+`NotificationDispatchEventHandler` currently injects a **single** `NotificationTransport` by type
+(only `EmailNotificationTransport` implements the port — `integration/.../dispatch/
+NotificationDispatchEventHandler.java:49`). Adding a second adapter as-is →
+`NoUniqueBeanDefinitionException`. **Resolution — part of THIS slice, not deferred**: each adapter
+declares its own `Transport transport()`; Spring injects `List<NotificationTransport>`; the
+dispatcher builds a `Map<Transport, NotificationTransport>` from it and routes by
+`event.transport()`. Mirrors the bus's own `handlersByTopic` precedent (`EventHandler` beans
+collected into a map keyed by `topic()`). Adding a third transport (SMS) later touches zero
+dispatcher code — proven by a test with two transports registered.
+
+A `TELEGRAM` event arriving with no Telegram adapter mounted (bot token unconfigured) → the map has
+no entry for `TELEGRAM` → dispatcher throws `TerminalBusException` → straight to DLT. Consistent with
+slice 3's failure model (no silent drop).
+
+### Locked forks
+
+1. **Transport selection** — see blocker above. `Map<Transport, NotificationTransport>`, keyed by
+   each adapter's own declared `transport()`.
+2. **Recipient — no contract change.** `NotificationEvent.recipient` / the port's `recipient`
+   parameter are already a generic `String` ("transport-specific address, e.g. an email address") —
+   a Telegram chat_id flows through unchanged. **Account → Telegram-chat_id resolution is deferred to
+   milestone 07** (domain knows which account has which Telegram chat); no producer resolves a
+   chat_id today (confirmed: zero `chat_id` references anywhere in the repo pre-slice). This slice's
+   own test supplies a chat_id directly — there are no real notification producers yet regardless of
+   transport.
+3. **Bot token is a separate token**, `nobilis.notification.telegram.bot-token` — conceptually a
+   different bot from milestone 02's (deferred, code-free) Telegram LOGIN widget. Trivially merged
+   into one bot later if that turns out to be desirable; not assumed now.
+4. **Opt-in = `@ConditionalOnProperty` gate (crypto-style), NOT email's unconditional `@Service`.**
+   Email has a working Mailpit default with no secret required; Telegram is useless without a bot
+   token, so `TelegramNotificationTransport` mounts only when
+   `nobilis.notification.telegram.bot-token` is set — mirrors `CryptoAutoConfiguration`
+   (`@ConditionalOnProperty(prefix = "nobilis.crypto", name = "master-key")`), not
+   `EmailNotificationTransport`'s plain `@Service`. A `TELEGRAM` event with the adapter absent behaves
+   per the blocker section above (`TerminalBusException` → DLT), not a boot failure.
+5. **HTTP client = `RestClient` POST to the Bot API**, not a bot library. `POST
+   https://api.telegram.org/bot<token>/sendMessage` with `chat_id` + `text` (+ optional
+   `parse_mode`), JSON body — confirmed current via context7 (Telegram Bot API docs) and Spring's
+   `RestClient` reference (Spring Framework 6.2, the synchronous fluent client already implied by
+   Spring Boot 4.1). Zero new deps, KISS; a full bot library's surface (updates, callbacks, commands)
+   is unneeded for send-only and out of scope per the blocker/goal above.
+
+### Failure classification
+Distinguish, using Telegram's response (`ok`, `error_code`, `description`):
+- **TERMINAL** (no retry, straight to DLT): 4xx-class errors — invalid `chat_id`, bot blocked by
+  user, bad request. Same shape as slice 3's classification (`TerminalBusException`).
+- **RETRIABLE** (retry then DLT): network failure, timeout, 5xx-class errors
+  (`RetriableBusException`).
+- No finer distinction than this is in scope — mirrors slice 3's own accepted-risk stance for SMTP
+  (any transport failure lumped as retriable was the prior baseline; Telegram gets exactly this
+  two-way split, not more).
+
+### Config
+Pattern = crypto `master-key`'s shape: `@ConfigurationProperties` + `@ConditionalOnProperty` +
+`${NOBILIS_NOTIFICATION_TELEGRAM_BOT_TOKEN:}`-style placeholder in the runnable's
+`application-local.properties.example` + real value never committed (gitleaks-gated).
+
+**Gitleaks trap (recon-confirmed) — must fix THIS slice.** The existing custom rule
+(`.gitleaks.toml`, `nobilis-base64-256bit-key`) only matches a 44-char Base64 value; a Telegram bot
+token (`123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11` shape) does not match it and would rely solely on
+gitleaks' generic built-in rule (unverified whether that catches this exact shape). **Add a
+Telegram-token-shaped pattern to `.gitleaks.toml`** (digits `:` base64url-ish suffix) alongside the
+existing key rule, allowlisting `${ENV}` placeholders and `*.example` files the same way.
+
+### Code location
+- `integration/.../dispatch/TelegramNotificationTransport.java` — new, `@Service` (or equivalent)
+  `@ConditionalOnProperty(prefix = "nobilis.notification.telegram", name = "bot-token")`, implements
+  `NotificationTransport`, adds `Transport transport()` returning `TELEGRAM`. `RestClient` field,
+  `send(recipient, subject, body)` posts to `sendMessage` (recipient = chat_id; subject unused or
+  folded into text, per Telegram having no subject concept — confirm at GATE-0 how `subject`+`body`
+  map onto Telegram's single `text` field).
+- `EmailNotificationTransport` — add its own `Transport transport()` returning `EMAIL` (both adapters
+  now implement the same extended port shape).
+- `NotificationTransport` port — add `Transport transport()` to the interface (both adapters must
+  implement it; the port's `send(...)` signature is unchanged).
+- `NotificationDispatchEventHandler` — replace the single injected `NotificationTransport transport`
+  field with `List<NotificationTransport>` → build `Map<Transport, NotificationTransport>` (e.g. in a
+  constructor or `@PostConstruct`), look up by `event.transport()`; missing entry →
+  `TerminalBusException`.
+- `common/.../notifications/` or a new `telegram/` config-properties class — bot-token
+  `@ConfigurationProperties(prefix = "nobilis.notification.telegram")` (location: wherever
+  `TelegramNotificationTransport` itself lives, mirrors `CryptoProperties`'s co-location with its
+  autoconfig — confirm at GATE-0 whether this needs its own autoconfig class or a plain
+  `@ConditionalOnProperty` on the `@Service` is sufficient, given it's a single bean not a Kafka-style
+  adapter).
+- `integration/pom.xml` — confirm `spring-boot-starter-web` (or whatever module supplies
+  `RestClient`) is already on the classpath; add if not.
+- `integration/src/main/resources/application.properties` — add
+  `nobilis.notification.telegram.bot-token=${NOBILIS_NOTIFICATION_TELEGRAM_BOT_TOKEN:}` (empty
+  default → adapter unmounted in dev unless explicitly configured).
+- `admin/src/main/resources/application-local.properties.example` (or wherever the runnable's
+  example file lives, mirrors crypto's) — add the placeholder line.
+- `.gitleaks.toml` — new Telegram-token-shaped rule per the trap above.
+
+### Files to create / change
+
+Modules touched: `integration`, `common` (interface change only), root `.gitleaks.toml`.
+
+- `integration/.../dispatch/NotificationTransport.java` — add `Transport transport()` to the
+  interface.
+- `integration/.../dispatch/EmailNotificationTransport.java` — implement `transport()` → `EMAIL`.
+- `integration/.../dispatch/TelegramNotificationTransport.java` — new adapter (send-only), gated,
+  `RestClient` POST to `sendMessage`, terminal/retriable classification per above.
+- `integration/.../dispatch/NotificationDispatchEventHandler.java` — `Map<Transport,
+  NotificationTransport>` selection replacing single-bean injection; missing-transport →
+  `TerminalBusException`.
+- `integration/pom.xml` — `RestClient`-supplying starter if not already present.
+- `integration/src/main/resources/application.properties` — bot-token property.
+- runnable's `application-local.properties.example` — placeholder line for the bot token.
+- `.gitleaks.toml` — Telegram-token pattern + allowlist entries.
+- `docs/sources-log.md` — rows for: the Map-based transport-selection refactor, the Telegram
+  transport itself (RestClient choice, terminal/retriable mapping), the gitleaks pattern addition,
+  the separate-token-scope decision.
+
+### Open questions
+1. How `subject` + `body` (the port's two text params) map onto Telegram's single `text` field —
+   concatenate, drop subject, or use `parse_mode` formatting to distinguish them. Not locked; decide
+   at GATE-0/implementation, doesn't affect the architecture above.
+2. Whether the bot-token config needs its own `@ConfigurationProperties`/autoconfig class (crypto-
+   style, two files) or a single `@ConditionalOnProperty` + `@Value`/`@ConfigurationProperties` on
+   `TelegramNotificationTransport` itself is sufficient for one property. Pick the simpler shape
+   unless a second Telegram-scoped property emerges.
+3. Exact `RestClient` error handling idiom for turning a non-2xx response (or Telegram's `ok:false`
+   body on a 200) into terminal-vs-retriable — `onStatus()` handlers vs. catching
+   `RestClientResponseException` vs. inspecting the parsed body's `error_code`. Confirm against the
+   installed Spring version at GATE-0 rather than assuming from context7's general docs.
+
+### Testing strategy
+
+**Backend**:
+- Unit test: `NotificationDispatchEventHandler` with **two** registered `NotificationTransport` fakes
+  (one `EMAIL`, one `TELEGRAM`) — proves routing by `event.transport()` and proves adding a transport
+  doesn't require dispatcher changes (mirrors slice 3's dispatcher unit-test shape, mocked
+  dependencies).
+- Unit test: `NotificationDispatchEventHandler` with a `TELEGRAM` event and no Telegram transport
+  registered → asserts `TerminalBusException`.
+- Unit test: `TelegramNotificationTransport` itself, mocked `RestClient` (no real HTTP, no
+  Testcontainers precedent needed — email has no adapter-level unit test either, only its Mailpit
+  integration test; Telegram's unit test fills a gap email left, using a mocked/stubbed `RestClient`
+  or a WireMock-style stub of the Bot API endpoint) — three cases: success (200, `ok:true`), terminal
+  (4xx / `ok:false` with a terminal `error_code`), retriable (network exception / 5xx).
+
+**Frontend**: none this slice.
+
+### Out of scope (name only — do not design, do not build)
+- Inline buttons, callback-query handling, bot commands → milestone 07 (domain "ПОЛУЧИТЬ→claim"
+  flow).
+- Telegram LOGIN (milestone 02, B1 widget) — different concern, untouched, no code exists for it
+  either.
+- Account → Telegram chat_id resolution (deferred to milestone 07, per fork 2).
+- SMS transport (named in the milestone's original "Slice 3+" list, not this slice).
+- Fine-grained Telegram error-code taxonomy beyond the terminal/retriable two-way split.
+
+### DoD
+- [ ] `NotificationTransport` port gains `Transport transport()`; both adapters implement it.
+- [ ] `NotificationDispatchEventHandler` selects via `Map<Transport, NotificationTransport>` built
+      from an injected `List<NotificationTransport>`; routes by `event.transport()`; a test with two
+      transports registered proves adding one doesn't touch dispatcher logic.
+- [ ] `TelegramNotificationTransport` (send-only) behind the port, `@ConditionalOnProperty`-gated on
+      `nobilis.notification.telegram.bot-token`, declares `transport() == TELEGRAM`.
+- [ ] `RestClient` POST to `sendMessage`; terminal (4xx / invalid chat_id / blocked) →
+      `TerminalBusException`; retriable (5xx / network) → `RetriableBusException`.
+- [ ] A `TELEGRAM` event with the adapter absent (no bot token configured) → `TerminalBusException` →
+      DLT (proven by a unit test, per fork 1).
+- [ ] Bot-token config: property + `${ENV}` placeholder + `.example` entry + a gitleaks pattern
+      covering the Telegram token shape.
+- [ ] Tests: Telegram send via mocked HTTP (success + terminal + retriable paths); dispatcher
+      two-transport routing test; dispatcher missing-transport test.
+- [ ] `mvn -B verify` green across the full reactor.
+- [ ] `docs/sources-log.md` rows added: Map-based transport selection, Telegram transport (RestClient
+      + classification), gitleaks pattern, separate bot-token scope decision.
+
+### Risks
+- The port's `send(recipient, subject, body)` shape was designed around email's subject+body split;
+  Telegram has no subject concept, so this slice either drops `subject` silently or folds it into
+  `text` — a slightly awkward fit that a future third transport (SMS, also subject-less) will
+  re-confirm rather than resolve differently.
+- `@ConditionalOnProperty` gating means the Telegram adapter is genuinely untested against a real
+  bot/chat in dev by default (no Mailpit-equivalent local stack service) — first real send only
+  happens once a real token is configured somewhere, likely staging/prod, not this slice's
+  Testcontainers-free unit tests.
+- Widening the `NotificationTransport` port's contract (adding `transport()`) touches
+  `EmailNotificationTransport` too — a small but real edit to already-shipped slice-2 code, not a
+  pure-addition change.
+
+## Slice 4 — CLOSED, as-built (2026-07-11)
+
+Implemented per the locked forks above with one correction beyond the plan text, caught during build
+(full rationale in `docs/sources-log.md`, the five `04-integration-bus slice 4` rows):
+
+1. **Dispatcher's blanket catch had to change.** `NotificationDispatchEventHandler.handle` previously
+   caught every `Exception` from `transport.send(...)` and rewrapped it as `RetriableBusException` —
+   which would have silently flattened `TelegramNotificationTransport`'s own terminal classification.
+   Fixed: `RetriableBusException`/`TerminalBusException` are now caught first and rethrown as-is; only
+   unclassified exceptions fall through to the generic retriable wrap (email's `MailException`s still
+   land there unchanged).
+2. **Bot-token property stays genuinely absent**, not an empty-string `${ENV:}` default like
+   mail/db's — an empty string still counts as "present" to `@ConditionalOnProperty`, which would
+   have mounted the adapter with a broken token. Relies on Spring's relaxed env-var binding
+   (`NOBILIS_NOTIFICATION_TELEGRAM_BOT_TOKEN` → `nobilis.notification.telegram.bot-token`), same
+   mechanism `nobilis.crypto.master-key` already uses — no `.example` placeholder needed since
+   `integration` has no local-profile split (unlike `admin`/`app`).
+3. **`RestClient.Builder`/test seam**: `TelegramNotificationTransport` gained a package-private
+   `RestClient`-accepting constructor (alongside the `@Autowired` `@Value`-driven one) purely as a
+   test seam for `MockRestServiceServer.bindTo(...)` — no production behavior change.
+4. All other locked forks (Map-based selection, separate bot-token scope, `RestClient` over a bot
+   library, terminal/retriable split) landed exactly as planned, no deviations.
+
+**Files changed**:
+- `integration/.../dispatch/NotificationTransport.java` — added `Transport transport()`.
+- `integration/.../dispatch/EmailNotificationTransport.java` — implements `transport()` → `EMAIL`.
+- `integration/.../dispatch/TelegramNotificationTransport.java` (new) — send-only adapter,
+  `@ConditionalOnProperty`-gated, `RestClient` POST to `sendMessage`, terminal/retriable
+  classification.
+- `integration/.../dispatch/NotificationDispatchEventHandler.java` — `Map<Transport,
+  NotificationTransport>` selection built from an injected `List<NotificationTransport>`; missing-
+  transport → `TerminalBusException`; typed exceptions from a transport propagate unchanged.
+- `integration/src/test/.../dispatch/TelegramNotificationTransportTest.java` (new) — `transport()`,
+  success, terminal (4xx), retriable (5xx), via `MockRestServiceServer`.
+- `integration/src/test/.../dispatch/NotificationDispatchEventHandlerTest.java` — constructor updated
+  for `List<NotificationTransport>`; two new tests: two-transport routing, missing-transport terminal.
+- `integration/pom.xml` — added plain `spring-web` (not the starter — headless worker, no embedded
+  server needed).
+- `integration/src/main/resources/application.properties` — documented (not assigned) the bot-token
+  property.
+- `.gitleaks.toml` — new `nobilis-telegram-bot-token` rule for the `<bot_id>:<secret>` shape.
+- `docs/sources-log.md` — five new rows (Map-selection, Telegram transport, catch-block correction
+  folded into the transport row, separate bot-token scope, gitleaks pattern).
+
+**DoD met**: `mvn -B verify` green across the full reactor (common 68, admin/auth/app unchanged,
+integration 11 tests — 6 dispatcher unit incl. the 2 new routing/missing-transport cases, 4 new
+Telegram transport tests, 1 Mailpit integration test regression-passing). `gitleaks dir .` and
+`gitleaks git --staged` both clean against the actual changeset (the only 4 findings in the working
+tree are pre-existing, correctly-`*-local.properties`-gitignored local dev secrets, unrelated to this
+slice). Spotless + Checkstyle clean.

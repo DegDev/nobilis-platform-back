@@ -19,6 +19,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +30,7 @@ import io.github.degdev.engine.common.bus.TerminalBusException;
 import io.github.degdev.engine.common.notifications.NotificationTemplateTranslation;
 import io.github.degdev.engine.common.notifications.NotificationsService;
 import io.github.degdev.engine.common.notifications.Transport;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,6 +43,11 @@ import tools.jackson.databind.json.JsonMapper;
  * Slice-3: {@link NotificationDispatchEventHandler} must throw typed exceptions instead of
  * swallowing failures, so the bus-level retry/DLQ machinery (see {@code
  * KafkaEventBusAutoConfiguration}) can act on them.
+ *
+ * <p>Slice-4: transport selection is a {@code Map} built from every registered {@link
+ * NotificationTransport}, keyed by each adapter's own {@link NotificationTransport#transport()} —
+ * proven by registering two transports and routing by the event's channel, and by a channel with no
+ * registered adapter.
  */
 @ExtendWith(MockitoExtension.class)
 class NotificationDispatchEventHandlerTest {
@@ -57,16 +66,20 @@ class NotificationDispatchEventHandlerTest {
 
   @BeforeEach
   void setUp() {
+    when(transport.transport()).thenReturn(Transport.EMAIL);
     dispatcher =
-        new NotificationDispatchEventHandler(notificationsService, transport, new JsonMapper());
+        new NotificationDispatchEventHandler(
+            notificationsService, List.of(transport), new JsonMapper());
   }
 
   @Test
   void unparseablePayloadIsTerminal() {
-    verifyNoInteractions(notificationsService, transport);
+    verifyNoInteractions(notificationsService);
 
     assertThatExceptionOfType(TerminalBusException.class)
         .isThrownBy(() -> dispatcher.handle("not json"));
+
+    verify(transport, never()).send(any(), any(), any());
   }
 
   @Test
@@ -100,5 +113,37 @@ class NotificationDispatchEventHandlerTest {
     dispatcher.handle(VALID_PAYLOAD);
 
     assertThat(dispatcher.topic()).isEqualTo(NotificationDispatchEventHandler.TOPIC);
+  }
+
+  @Test
+  void channelWithNoRegisteredTransportIsTerminal() {
+    String telegramPayload =
+        """
+        {"typeKey":"order.created","locale":"ru","transport":"TELEGRAM",\
+        "recipient":"chat123","vars":null}\
+        """;
+    when(notificationsService.resolveForDispatch("order.created", Transport.TELEGRAM, "ru"))
+        .thenReturn(Optional.of(translation));
+
+    assertThatExceptionOfType(TerminalBusException.class)
+        .isThrownBy(() -> dispatcher.handle(telegramPayload));
+  }
+
+  @Test
+  void routesToTheMatchingTransportWhenTwoAreRegistered() {
+    NotificationTransport telegramTransport = mock(NotificationTransport.class);
+    when(telegramTransport.transport()).thenReturn(Transport.TELEGRAM);
+    NotificationDispatchEventHandler twoTransportDispatcher =
+        new NotificationDispatchEventHandler(
+            notificationsService, List.of(transport, telegramTransport), new JsonMapper());
+    when(notificationsService.resolveForDispatch("order.created", Transport.EMAIL, "ru"))
+        .thenReturn(Optional.of(translation));
+    when(translation.getSubject()).thenReturn("Заказ создан");
+    when(translation.getBody()).thenReturn("Спасибо за заказ!");
+
+    twoTransportDispatcher.handle(VALID_PAYLOAD);
+
+    verify(transport).send("customer@example.test", "Заказ создан", "Спасибо за заказ!");
+    verify(telegramTransport, never()).send(any(), any(), any());
   }
 }

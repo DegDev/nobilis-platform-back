@@ -146,6 +146,13 @@ touched, result, what was verified) **+ a proposed commit message**. The user re
 This holds even when a specific prompt doesn't restate it; build/docs/fix prompts that repeat a
 "commit gate" line are only echoing this rule.
 
+**Proposed-message format (always, no prompt needed):** subject line — imperative,
+`type(scope): …`, ≤72 chars, no trailing period → one blank line → body. **The body is BULLETS
+(`- `), one per discrete change — never a prose paragraph** for anything touching more than one
+thing. A wrapped prose body renders as a brick on GitHub (single newlines collapse); bullets
+survive. Only a genuinely single-sentence body may stay prose. Full spec: `docs/conventions.md`
+and `docs/process/prompting-methodology.md`.
+
 ## Default DoD (every task, before STOP)
 
 The run-through before finishing any task (sections above hold the detail; this is the checklist):
