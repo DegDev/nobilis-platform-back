@@ -32,6 +32,19 @@ description = "Telegram Bot API token (bot_id:secret shape)"
 regex = '''[0-9]{8,10}:[A-Za-z0-9_-]{34,36}'''
 entropy = 3.5
 
+[[rules]]
+id = "nobilis-messaggio-login"
+description = "Messaggio SMS gateway login assigned to a property or field"
+# Messaggio-Login is an arbitrary unstructured string (a login/username) with no fixed detectable
+# shape, unlike the Telegram token above — a value-shape regex isn't possible, so this rule is
+# keyword-gated on the PROPERTY KEY shape instead: literal "messaggio.login" (the dotted
+# nobilis.notification.sms.messaggio.login key), not the HTTP header name "Messaggio-Login" (hyphen)
+# that shows up in plain-English docs/plans describing the protocol — a bare property NAME with no
+# value, ${ENV} placeholders, and "<placeholder>"-style doc values do not match.
+regex = '''(?i)messaggio\.login\s*[:=]\s*["']?([^\s"'$<][^\s"'>]{2,})'''
+secretGroup = 1
+keywords = ["messaggio.login"]
+
 [allowlist]
 description = "Fake samples and placeholders that must never trip the scan"
 # *.example / *.example.<ext> files carry intentionally-fake structural samples only;

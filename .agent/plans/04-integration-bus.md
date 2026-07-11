@@ -767,3 +767,181 @@ Telegram transport tests, 1 Mailpit integration test regression-passing). `gitle
 `gitleaks git --staged` both clean against the actual changeset (the only 4 findings in the working
 tree are pre-existing, correctly-`*-local.properties`-gitignored local dev secrets, unrelated to this
 slice). Spotless + Checkstyle clean.
+
+## Slice 5 — SMS transport (Messaggio, send-only)
+
+**Scope**: backend only. Branch `04-sms-transport`, cut from `main` (slices 1-4 merged, Telegram
+live).
+
+**Applicable playbook**: `notification-dispatch.md` **[anticipated]** — same status as slice 4; stays
+unwritten until extracted from the full email+Telegram+SMS trio together (per "extract, don't
+predict").
+
+**Goal**: an `SmsNotificationTransport` adapter behind the existing `NotificationTransport` port that
+sends a text message via Messaggio, mirroring `TelegramNotificationTransport`'s shape almost exactly
+(structural clone, Bot API swapped for the Messaggio HTTP API). **Send-only, single vendor.**
+
+**Recon basis**: `nobilis-platform-back` recon (this session, jetbrains-confirmed against the merged
+Telegram code) + a locked-forks web discussion, itself validated clean-room against Deg's working pet
+project (`/media/deg/GamesBig/www/homeservice-back/.../PhoneVerificationService.java`) for protocol
+shape only — zero code ported (different package, different company, Compo-origin). Forks below are
+LOCKED, not open for re-litigation at GATE-0.
+
+### Recon corrections to slice 4's text (confirmed against merged code, apply to SMS — and note for
+future doc-fix, see Risks)
+- **No `.env.example`/`*.example` artifact exists anywhere in the repo.** Slice 4's own text above
+  (`### Config`, `### Code location`) describes an `application-local.properties.example` placeholder
+  that was never actually created — the as-built Telegram section confirms the real mechanism: the
+  property key is left **entirely absent** from `application.properties`, with a comment explaining
+  why (an empty default still satisfies `@ConditionalOnProperty`'s presence check). SMS mirrors the
+  **as-built** mechanism, not slice 4's original (pre-build) text.
+- **No `@ConfigurationProperties` class.** `TelegramNotificationTransport` ended up `@Value`-injecting
+  the token directly in its constructor (`TelegramNotificationTransport.java:51-55`), not a separate
+  properties class. SMS mirrors `@Value` injection for `login`, `sender-id`, and the two optional
+  config values below.
+
+### Decision — single-vendor direct adapter, not a two-layer gateway port
+`SmsNotificationTransport` = the Messaggio adapter itself, directly behind `NotificationTransport`
+(Messaggio's request shape built inline, values sourced from config). **Not** a second
+`SmsGateway`/`SmsProvider` sub-port with Messaggio as one pluggable implementation. The pet project's
+two-layer multi-vendor strategy (`SmsProvider`/`SmsCenterProvider`/`MtsSmsProvider`, DB-backed
+provider config) fit a multi-vendor reality that doesn't exist here — one real gateway (Messaggio) is
+the only vendor Deg has. Per "extract, don't predict" (`docs/playbooks/README.md`): the abstraction
+gets added if/when a second vendor is actually integrated, not speculatively now.
+
+### Locked forks
+1. **Transport registration** — zero dispatcher changes. `SmsNotificationTransport` declares
+   `transport() == SMS`; the existing `Map<Transport, NotificationTransport>` selection (built from
+   `List<NotificationTransport>`, slice 4) picks it up automatically — this is exactly the "adding a
+   third transport touches zero dispatcher code" case slice 4's test already proves.
+2. **Subject: ignored.** `Transport.SMS`'s own Javadoc already documents "templates typically use
+   body only (subject is ignored)" — a merged, engine-level design signal that matches Telegram's
+   existing behavior (`send(recipient, subject, body)` receives `subject` but never reads it,
+   `TelegramNotificationTransport.java:62-78`). SMS does the same: parameter present, unused.
+3. **Country-code prefix — adapter-side config default.** `nobilis.notification.sms.country-code`
+   (e.g. `373`, all-Moldova — tied to Deg's specific Messaggio account/plan, never hardcoded).
+   Applied by the adapter to the raw `recipient` before building the request. Full E.164
+   normalization / knowing which account has which real phone number is deferred to milestone 07
+   (same deferral shape as slice 4's Telegram chat_id resolution) — this slice's own tests supply a
+   bare local-format number and assert the prefixed result.
+4. **Failure classification — HTTP-status-only, mirrors Telegram exactly.** 4xx →
+   `TerminalBusException`; 5xx / network / timeout → `RetriableBusException`. `RestClient`
+   default-throws `HttpClientErrorException`/`HttpServerErrorException`/`ResourceAccessException` on
+   these (context7-confirmed against Spring Framework reference docs during recon). **No Messaggio
+   response-body error-code parsing this slice** — context7 has zero indexed Messaggio API
+   documentation, so there is no independently verifiable taxonomy of Messaggio's own
+   permanent-vs-transient error codes to design against yet. Deferred to milestone 07, to be built
+   from real observed responses rather than guessed.
+5. **Gating — both `login` AND `sender-id` required.** Unlike Telegram's single-property gate,
+   Messaggio needs two values to send anything; `@ConditionalOnProperty` requires both present
+   (two-condition group, or a small `@ConditionalOnExpression`/composed-annotation — confirm exact
+   Spring idiom at GATE-0) before `SmsNotificationTransport` mounts. Either value absent → adapter not
+   mounted → an `SMS` event has no map entry → `TerminalBusException` → DLT, same failure shape as
+   slice 4's Telegram-absent case.
+6. **gitleaks — new dedicated rule for the Messaggio login.** The existing rules don't fit:
+   `nobilis-base64-256bit-key` expects a 44-char Base64 value; `nobilis-telegram-bot-token` expects
+   the `\d{8,10}:[A-Za-z0-9_-]{34,36}` shape. `Messaggio-Login` is an arbitrary unstructured
+   string/username with no fixed detectable shape — a precise shape-regex isn't possible the way it
+   was for Telegram's token. Add a keyword-gated rule (matches on the property-name keyword
+   `messaggio`, not a value-shape regex), allowlisted the same way as the existing rules.
+
+### Code location
+- `integration/.../dispatch/SmsNotificationTransport.java` — new, `@Service`, gated on both
+  `nobilis.notification.sms.messaggio.login` and `nobilis.notification.sms.messaggio.sender-id`
+  present, implements `NotificationTransport`, `transport()` returns `SMS`. `RestClient` field built
+  from `@Value`-injected `login`/`sender-id` (+ optional `base-url` override, default
+  `https://msg.messaggio.com`, + `country-code`). `send(recipient, subject, body)` prefixes
+  `recipient` with the configured country code, POSTs to `/api/v1/send` with header
+  `Messaggio-Login: <login>` and body `{"recipients":[{"phone":<prefixed>}],"channels":["sms"],
+  "sms":{"from":<sender-id>,"content":[{"type":"text","text":<body>}]}}`; terminal/retriable
+  classification per fork 4.
+- `NotificationTransport` port, `NotificationDispatchEventHandler` — **unchanged**, both already
+  support N transports since slice 4 (fork 1).
+- `integration/src/main/resources/application.properties` — document (not assign) the two Messaggio
+  properties + the optional base-url/country-code, mirroring the Telegram bot-token comment
+  (`application.properties:21-28`) explaining why they stay absent rather than empty-defaulted.
+- `.gitleaks.toml` — new keyword-gated `messaggio`-login rule per fork 6, alongside the existing
+  `nobilis-telegram-bot-token` rule.
+
+### Files to create / change
+
+Modules touched: `integration`, root `.gitleaks.toml`. `common`/`NotificationTransport` port
+untouched (slice 4 already generalized it).
+
+- `integration/.../dispatch/SmsNotificationTransport.java` — new adapter (send-only), dual-gated,
+  `RestClient` POST to Messaggio, terminal/retriable classification, country-code prefixing.
+- `integration/src/test/.../dispatch/SmsNotificationTransportTest.java` — new, mirrors
+  `TelegramNotificationTransportTest.java` structurally (`MockRestServiceServer.bindTo(RestClient
+  .Builder)` via a test-seam constructor).
+- `integration/src/main/resources/application.properties` — Messaggio config, documented-absent.
+- `.gitleaks.toml` — Messaggio keyword rule + allowlist entries.
+- `docs/sources-log.md` — rows for: the Messaggio adapter (direct single-vendor decision vs. a
+  gateway sub-port), the gitleaks keyword-rule choice (vs. a shape regex), the country-code config
+  decision, the deferred-error-taxonomy call (no context7 Messaggio docs).
+
+### Open questions
+1. Exact Spring idiom for a two-property `@ConditionalOnProperty` gate (composed annotation with
+   `@ConditionalOnProperty` array vs. `@ConditionalOnExpression`) — confirm at GATE-0 against the
+   installed Spring Boot 4.1 API, don't assume from memory.
+2. Optional `base-url` override property — needed only if Messaggio ever needs a per-environment
+   endpoint (e.g. a sandbox API). Include the property with a hardcoded-default fallback; not a hard
+   requirement, drop if it adds no real value at GATE-0.
+
+### Testing strategy
+
+**Backend**:
+- Unit test: `SmsNotificationTransportTest` — `transport()` returns `SMS`; success (2xx, no throw);
+  terminal (4xx → `TerminalBusException`); retriable (5xx → `RetriableBusException`); country-code
+  prefix applied to the outgoing request body. Mirrors
+  `TelegramNotificationTransportTest.java` case-for-case.
+- No new dispatcher tests needed — slice 4's two-transport routing/missing-transport tests already
+  cover the N-transport case generically; a third transport doesn't add new dispatcher behavior to
+  verify.
+
+**Frontend**: none this slice.
+
+### Out of scope (name only — do not design, do not build)
+- Multi-vendor SMS abstraction / a second gateway behind `SmsNotificationTransport` (per the
+  single-vendor decision above — revisit only if a second vendor is actually integrated).
+- DB-backed SMS provider config (the pet project's `SmsProviderEntity` — not ported).
+- SMS-based login/auth flow (milestone 02/07 concern, unrelated to this send-only notification
+  transport).
+- Account → phone-number resolution (deferred to milestone 07, per fork 3).
+- Parsing Messaggio's JSON response body for finer-grained error codes (deferred to milestone 07, per
+  fork 4 — no context7 docs to design against yet).
+
+### DoD
+- [ ] `SmsNotificationTransport` behind the port, `transport() == SMS`, gated on both
+      `nobilis.notification.sms.messaggio.login` and `...sender-id` present; either absent → adapter
+      not mounted → an `SMS` event → `TerminalBusException` → DLT (consistent with slice 4's
+      Map-selection + missing-transport model, no new dispatcher code needed).
+- [ ] `RestClient` POST to `msg.messaggio.com/api/v1/send` with the `Messaggio-Login` header and the
+      `recipients`/`channels`/`sms` JSON body shape; the configured country-code prefix applied to
+      the recipient before sending.
+- [ ] Terminal (4xx) → `TerminalBusException`; retriable (5xx / network) → `RetriableBusException` —
+      same two-way split as Telegram, no Messaggio body-level error parsing this slice.
+- [ ] Config: `login`, `sender-id`, `country-code` (+ optional `base-url`) as `@Value`-injected
+      properties, keys left absent from `application.properties` with an explaining comment (mirrors
+      the as-built Telegram pattern, not slice 4's original example-file text); a gitleaks
+      keyword-gated rule for the Messaggio login property.
+- [ ] Test: `SmsNotificationTransportTest` via `MockRestServiceServer` — success / terminal /
+      retriable / country-code-prefix cases, mirroring `TelegramNotificationTransportTest`.
+- [ ] `mvn -B verify` green across the full reactor.
+- [ ] `docs/sources-log.md` rows added: Messaggio adapter (single-vendor decision), gitleaks keyword
+      rule, country-code config decision, deferred-error-taxonomy call.
+
+### Risks
+- No context7-verifiable Messaggio API documentation exists — the request/response shape is trusted
+  from a single pattern-only read of Deg's older pet-project code, not a live spec. If Messaggio's
+  actual current API has drifted from that shape, this slice's happy-path test would pass against a
+  wrong assumption; first real send (staging/prod, real credentials) is the actual validation,
+  same accepted-risk shape as slice 4's untested-against-a-real-bot risk.
+- Country-code prefixing bakes in a single-country (`373`) assumption at the adapter config layer,
+  same shape as the pet project's hardcoded prefix, just moved to config — a genuinely
+  multi-country recipient base would need real E.164-aware normalization upstream (milestone 07),
+  not this slice's simple string-prefix.
+- **Doc-fix owed, separate from this slice**: slice 4's `### Config`/`### Code location` text above
+  (lines ~587-627) describes a `@ConfigurationProperties` class and an `application-local
+  .properties.example` placeholder that don't match what was actually merged (the as-built section
+  below it is correct). Not fixed here to keep this an append-only change — flag for a future
+  doc-cleanup pass.
