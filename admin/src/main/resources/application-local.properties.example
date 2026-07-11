@@ -26,3 +26,4 @@ spring.datasource.username=${NOBILIS_DB_USERNAME:nobilis}
 spring.datasource.password=${NOBILIS_DB_PASSWORD:<db-password>}
 spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.open-in-view=false
+spring.datasource.hikari.maximum-pool-size=10
