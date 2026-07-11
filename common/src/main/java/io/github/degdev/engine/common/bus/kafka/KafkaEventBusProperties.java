@@ -24,4 +24,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  */
 @ConfigurationProperties(prefix = "nobilis.integration.bus.kafka")
 public record KafkaEventBusProperties(
-    String bootstrapServers, @DefaultValue("nobilis-integration-worker") String groupId) {}
+    String bootstrapServers,
+    @DefaultValue("nobilis-integration-worker") String groupId,
+    @DefaultValue("2") int retryAttempts,
+    @DefaultValue("1000") long retryBackoffMs) {}

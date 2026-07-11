@@ -192,7 +192,7 @@ becomes relevant when a second transport (Telegram) is added in slice 3+; until 
 had two candidate adapters from day one — Kafka now, RabbitMQ infra already provisioned).
 
 ### Slice 3+ (name only — do not design, do not build)
-- Retry + DLQ at the bus level (Kafka redelivery → dead-letter topic).
+- Retry + DLQ at the bus level — now designed, see `## Slice 3 — bus-level retry + DLQ` below.
 - Telegram transport (second adapter behind the transport port from decision 2).
 - SMS transport (stub — no real provider integration implied by the name alone).
 - Template variable interpolation (activates the `vars` field reserved in decision 3).
@@ -325,3 +325,193 @@ glue (see sources-log for the full reasoning).
 **DoD met**: `mvn -B verify` green across the full reactor (66 common tests incl.
 `KafkaEventBusIntegrationTest` regression-passing, 1 integration-module test — the full
 event→resolve→email round trip against real Postgres + Mailpit containers).
+
+## Slice 3 — bus-level retry + DLQ
+
+**Scope**: backend only. Branch `04-retry-dlq`, cut from `main` (slices 1+2 merged).
+
+**Applicable playbook**: `async-consumer.md` **[anticipated]** — "topic → handler → DLQ topic on
+failure (no built-in requeue in Kafka)" is exactly this slice; per "extract, don't predict" it stays
+unwritten until this slice lands, then gets extracted from it.
+
+**Goal**: when a consumer handler fails, the bus retries N times with backoff, then routes the event
+to a dead-letter topic instead of dropping it. Bus-level (Kafka redelivery → DLT), NOT a
+transport-level retry loop inside the dispatcher.
+
+**Recon basis**: two independent recons (Claude Code + Codex), compared in the originating chat — not
+re-run here. Forks below are LOCKED from that comparison, not open for re-litigation at GATE-0.
+
+### Precondition (fork 0 — a fact, not a design choice)
+`KafkaEventBusAutoConfiguration`'s consumer factory (`common/.../bus/kafka/`, `~85-90`) is built via
+`DefaultKafkaConsumerFactory` from a bare `Map`, so Spring never overrides the Kafka client default
+`enable.auto.commit=true`. With auto-commit on, the consumer acks offsets on its own schedule
+regardless of handler outcome — `DefaultErrorHandler`-driven redelivery has nothing to seek back to.
+**Must set** `ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG=false` in the consumer factory's `Map`, and
+`ContainerProperties.AckMode.RECORD` on the container — without both, retry cannot actually redeliver.
+(One of the two source recons initially claimed the default was already `false`; the other caught the
+mistake against the client's real default. Kept as a chat-level correction, not a `sources-log` row —
+no code existed yet to log against.)
+
+### Locked forks
+
+1. **Terminal-vs-retriable classification → typed exceptions on the port**, in `common/.../bus/`:
+   `RetriableBusException` / `TerminalBusException`. Rationale: delivery reliability (retry vs.
+   give-up) is broker-neutral semantics, not a Kafka-only concept — a future RabbitMQ adapter needs
+   the same signal from a handler. Rejected: Kafka-only exception classes declared in `integration`
+   and referenced by the Kafka adapter's config — that leaks delivery semantics into the adapter and
+   ties the port's failure contract to whichever concrete exception types the current handler happens
+   to throw.
+2. **Dispatcher stops swallowing.** `NotificationDispatchEventHandler` (currently drop + log at WARN
+   on every failure path, per Slice 2's decision 6) throws instead:
+   - **TERMINAL** → unparseable JSON, no template/translation match, disabled `NotificationType`. No
+     retry — straight to DLT.
+   - **RETRIABLE** → any transport (SMTP) failure. Retried with backoff, DLT after N attempts.
+   - Fine-grained SMTP 4xx (permanent) vs 5xx (transient) distinction is **deferred** — any transport
+     failure is retriable for now.
+3. **Retry mechanism = `DefaultErrorHandler`** (blocking backoff on the consumer thread), attached via
+   `setCommonErrorHandler` on the existing `ConcurrentMessageListenerContainer`
+   (`KafkaEventBusAutoConfiguration`, ~line 110) — no restructuring of the container needed.
+   `@RetryableTopic` is **structurally ruled out**: it requires `@KafkaListener`-annotated methods with
+   a fixed `topics` attribute resolved at proxy-creation time, but this codebase's topic set is the
+   runtime union of every registered `EventHandler` bean's `topic()` (locked reason recorded in
+   `docs/sources-log.md:97`, re-confirmed by both recons) — adopting it would mean abandoning that
+   design.
+4. **DLT provisioning = auto-create.** No topic in this repo is explicitly declared anywhere (no
+   `NewTopic` bean, no `stack.yml` topic provisioning) — every existing topic relies on Kafka's
+   auto-create-on-first-use default. `DeadLetterPublishingRecoverer` publishes to `<topic>-dlt` (its
+   default suffix convention) with no override needed. Redpanda Console (already in `stack.yml`, port
+   8085) shows the DLT topic the same way it shows any other. Constraint: DLT partition count must be
+   ≥ source topic's — fine, since dev topics are single-partition.
+5. **Defaults = 2 retries (3 attempts total), `FixedBackOff(1000, 2)`** (1s interval), configured in
+   `KafkaEventBusProperties` (runnable-owns-config precedent from slice 1). Exponential backoff is
+   deferred.
+
+### Code location
+- `RetriableBusException`, `TerminalBusException` → new, `common/src/main/java/io/github/degdev/engine/common/bus/`.
+- `DefaultErrorHandler` + `DeadLetterPublishingRecoverer` bean, `addNotRetryableExceptions(TerminalBusException.class)`,
+  `FixedBackOff(1000, 2)` → `common/.../bus/kafka/KafkaEventBusAutoConfiguration.java` (this is where
+  the container is built; `integration` has no direct `spring-kafka` dependency, only transitive via
+  `common`, per recon — a Kafka-specific bean belongs in the adapter module, not the consumer module).
+- `ENABLE_AUTO_COMMIT_CONFIG=false` + `AckMode.RECORD` → same file, consumer factory `Map` +
+  `ContainerProperties`.
+- Retry defaults (max attempts, backoff interval) → `common/.../bus/kafka/KafkaEventBusProperties.java`.
+- Dispatcher throws typed exceptions instead of swallowing → edit
+  `integration/.../dispatch/NotificationDispatchEventHandler.java` (remove the `catch`+`LOG.warn`+
+  `return` on all three failure paths — parse failure, no-template-match, transport failure — replace
+  with throwing `TerminalBusException`/`RetriableBusException` as classified in fork 2).
+
+### Files to create / change
+
+Modules touched: `common`, `integration`.
+
+- `common/src/main/java/io/github/degdev/engine/common/bus/RetriableBusException.java` — new.
+- `common/src/main/java/io/github/degdev/engine/common/bus/TerminalBusException.java` — new.
+- `common/src/main/java/io/github/degdev/engine/common/bus/kafka/KafkaEventBusAutoConfiguration.java` —
+  add `ENABLE_AUTO_COMMIT_CONFIG=false` to the consumer factory map; set `AckMode.RECORD` on
+  `ContainerProperties`; build `DefaultErrorHandler` (with `DeadLetterPublishingRecoverer` wrapping a
+  `KafkaTemplate`, `FixedBackOff` from properties, `addNotRetryableExceptions(TerminalBusException.class)`)
+  and attach via `setCommonErrorHandler` on the constructed container.
+- `common/src/main/java/io/github/degdev/engine/common/bus/kafka/KafkaEventBusProperties.java` — add
+  retry-attempt-count / backoff-interval-ms properties (defaults 2 / 1000).
+- `integration/src/main/java/io/github/degdev/engine/integration/dispatch/NotificationDispatchEventHandler.java` —
+  replace swallow-all drop+WARN with throwing typed exceptions per fork 2's classification.
+- `common/src/test/java/io/github/degdev/engine/common/bus/kafka/KafkaEventBusIntegrationTest.java` —
+  extend (or a new sibling test) with a handler that deliberately throws, asserting redelivery count
+  and a record landing on `<topic>-dlt`.
+- `docs/sources-log.md` — three new rows: the auto-commit default fix, the retry/DLQ mechanism
+  decision, the port-level exception model decision.
+
+### Open questions
+None locked-open — all five forks above are locked from the source chat's recon comparison. The only
+GATE-0-time verification (not a design choice): confirm `DeadLetterPublishingRecoverer`'s exact
+constructor signature and `KafkaTemplate` bean availability against the installed `spring-kafka`
+version before writing the autoconfiguration bean, rather than assuming the context7-recalled API
+matches exactly.
+
+### Testing strategy
+
+**Backend**:
+- Unit tests: `RetriableBusException`/`TerminalBusException` classification is exercised implicitly
+  through the dispatcher's throw sites — a unit test per failure path (parse failure → terminal,
+  no-template-match → terminal, disabled type → terminal, transport failure → retriable) on
+  `NotificationDispatchEventHandler`, asserting the thrown exception type.
+- Integration test (Testcontainers Kafka, extends `KafkaEventBusIntegrationTest`'s existing shape): a
+  handler that always throws `RetriableBusException` → assert exactly 3 delivery attempts (1 + 2
+  retries) → assert a record appears on `<topic>-dlt`. A second case: a handler that throws
+  `TerminalBusException` → assert exactly 1 attempt (no retry) → assert straight-to-DLT.
+- Regression: existing `KafkaEventBusIntegrationTest` (ping round-trip) and
+  `NotificationDispatchEventHandlerIntegrationTest` (slice 2's happy-path email delivery) must still
+  pass after the auto-commit/ack-mode change — proves the precondition fix doesn't break already-
+  proven consumption.
+- Proof the retry/DLQ test actually catches breakage: revert the `DefaultErrorHandler` wiring
+  temporarily, confirm the new test fails, then reapply — same discipline slice 1 used for its Kafka
+  round-trip test.
+
+**Frontend**: none this slice.
+
+### Out of scope (name only — do not design, do not build)
+- Transport-level retry (a retry loop inside the dispatcher or `EmailNotificationTransport` itself).
+- Telegram transport, SMS transport (named in the milestone's "Slice 3+" list, unrelated to retry/DLQ).
+- Scheduler harness.
+- Exponential backoff (fixed only this slice).
+- SMTP 4xx/5xx fine-grained distinction (any transport failure = retriable, per fork 2).
+
+### DoD
+- [ ] `ENABLE_AUTO_COMMIT_CONFIG=false` + `AckMode.RECORD` set on the Kafka adapter's consumer/container.
+- [ ] `RetriableBusException` / `TerminalBusException` exist in `common/.../bus/`; dispatcher throws
+      typed exceptions instead of swallowing (no more blanket drop+WARN).
+- [ ] `DefaultErrorHandler` + `DeadLetterPublishingRecoverer` wired in the Kafka adapter:
+      `FixedBackOff(1000, 2)`, `addNotRetryableExceptions(TerminalBusException.class)`.
+- [ ] Retriable failure → 3 attempts → lands on `<topic>-dlt`. Terminal failure → straight to DLT, no
+      retry.
+- [ ] Testcontainers test proves both paths (retry-then-DLT, terminal-straight-to-DLT), including a
+      revert-then-reapply proof that the test catches breakage. Builds on
+      `KafkaEventBusIntegrationTest`.
+- [ ] `mvn -B verify` green across the full reactor (existing slice 1/2 tests still pass).
+- [ ] `docs/sources-log.md` rows added: auto-commit default fix, retry/DLQ mechanism decision,
+      port-level exception model decision.
+
+### Risks
+- Setting `AckMode.RECORD` (per-record commit) instead of the container default (`BATCH`) changes
+  commit frequency/throughput characteristics for every existing consumer on this bus (ping included),
+  not just the dispatcher — acceptable for a dev-scale worker, but worth naming as a side effect of
+  fixing the precondition, not an isolated dispatcher-only change.
+- `DefaultErrorHandler`'s blocking backoff runs on the consumer thread — during the 1s×2 retry window
+  for a stuck message, that partition's other messages don't get processed (head-of-line blocking).
+  Accepted for this slice's scale; would need `@RetryableTopic`-style non-blocking retry if throughput
+  becomes a concern later (structurally blocked this slice per fork 3, so not a near-term option).
+- Typed exceptions on the port (`common/.../bus/`) are a broader-reaching contract than a Kafka-local
+  fix — if a future adapter (RabbitMQ) can't cleanly map its own failure modes onto
+  Retriable/TerminalBusException, this abstraction may need revisiting. Accepted per fork 1's
+  reasoning (broker-neutral delivery semantics), not treated as a blocker now.
+
+## Slice 3 — CLOSED, as-built (2026-07-11)
+
+Implemented per the locked forks above with no deviations (full rationale in `docs/sources-log.md`,
+the four `04-integration-bus slice 3` rows).
+
+**Files changed**:
+- `common/.../bus/RetriableBusException.java`, `common/.../bus/TerminalBusException.java` (new).
+- `common/.../bus/kafka/KafkaEventBusProperties.java` — added `retryAttempts` (default 2) and
+  `retryBackoffMs` (default 1000).
+- `common/.../bus/kafka/KafkaEventBusAutoConfiguration.java` — consumer factory sets
+  `ENABLE_AUTO_COMMIT_CONFIG=false`; `eventBusListenerContainer` sets `AckMode.RECORD` and attaches a
+  `DefaultErrorHandler` (`DeadLetterPublishingRecoverer` over the existing `eventBusKafkaTemplate`,
+  `FixedBackOff(retryBackoffMs, retryAttempts)`, `addNotRetryableExceptions(TerminalBusException.class)`)
+  via `setCommonErrorHandler`.
+- `integration/.../dispatch/NotificationDispatchEventHandler.java` — the three former drop+WARN
+  branches (unparseable payload, no template match, transport failure) now throw
+  `TerminalBusException`/`TerminalBusException`/`RetriableBusException` respectively.
+- `common/src/test/.../bus/kafka/KafkaEventBusRetryDlqIntegrationTest.java` (new) — a handler that
+  always throws `RetriableBusException` is redelivered exactly 3 attempts then dead-lettered; a
+  handler that always throws `TerminalBusException` is dead-lettered on the first attempt with no
+  retry. DLT topics observed by registering ordinary `EventHandler` beans for `<topic>-dlt`.
+- `integration/src/test/.../dispatch/NotificationDispatchEventHandlerTest.java` (new) — unit tests for
+  the dispatcher's four throw/no-throw paths (mocked `NotificationsService`/`NotificationTransport`).
+
+**DoD met**: `mvn -B verify` green across the full reactor (common 68 tests incl. the new retry/DLQ
+integration test; admin 53; integration 5, incl. the 4 new dispatcher unit tests). Revert-then-reapply
+proof performed on the new retry/DLQ test: commenting out `container.setCommonErrorHandler(errorHandler)`
+made both new test cases fail (`expected: "retry-me"/"terminal-me" but was: null`, confirmed by a live
+`mvn test -Dtest=KafkaEventBusRetryDlqIntegrationTest` run); restoring the line turned them green again.
+`docs/sources-log.md` gained the four rows listed above.
