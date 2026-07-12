@@ -21,9 +21,9 @@ import org.springframework.lang.Nullable;
 
 /**
  * Resolves the request locale per the back↔front contract: transport is the {@code ?locale=<code>}
- * query parameter, valid values are {@code ru}/{@code ro} (lowercase ISO 639-1), and anything
- * absent, blank, or unsupported silently falls back to the default {@link #DEFAULT_LOCALE} ({@code
- * ru}) — bad input is never an error.
+ * query parameter, valid values are {@code en}/{@code ru}/{@code ro} (lowercase ISO 639-1), and
+ * anything absent, blank, or unsupported silently falls back to the default {@link #DEFAULT_LOCALE}
+ * ({@code en}) — bad input is never an error.
  *
  * <p>Deliberately framework-agnostic (a plain component taking a {@code String}, not a Servlet
  * {@code LocaleResolver}) so {@code common} stays free of any web dependency. The web modules bind
@@ -33,9 +33,9 @@ import org.springframework.lang.Nullable;
 public class LocaleResolver {
 
   /** Single source of truth for the engine default locale, mirrored by the front locale service. */
-  public static final Locale DEFAULT_LOCALE = Locale.forLanguageTag("ru");
+  public static final Locale DEFAULT_LOCALE = Locale.forLanguageTag("en");
 
-  private static final Set<String> SUPPORTED_LANGUAGES = Set.of("ru", "ro");
+  private static final Set<String> SUPPORTED_LANGUAGES = Set.of("en", "ru", "ro");
 
   /**
    * Resolves the effective locale from a requested code, defaulting silently rather than erroring

@@ -92,8 +92,7 @@ public class ContentBlockController {
     return contentBlockService
         .find(key)
         .map(ContentBlockDto::from)
-        .orElseThrow(
-            () -> new ContentBlockNotFoundException("Content block '" + key + "' does not exist"));
+        .orElseThrow(() -> new ContentBlockNotFoundException("error.content-block-not-found", key));
   }
 
   /**
@@ -163,7 +162,7 @@ public class ContentBlockController {
   @DeleteMapping("/{key}")
   public ResponseEntity<Void> delete(@PathVariable String key) {
     if (!contentBlockService.delete(key)) {
-      throw new ContentBlockNotFoundException("Content block '" + key + "' does not exist");
+      throw new ContentBlockNotFoundException("error.content-block-not-found", key);
     }
     return ResponseEntity.noContent().build();
   }

@@ -15,19 +15,37 @@
  */
 package io.github.degdev.engine.admin.api;
 
+import io.github.degdev.engine.common.i18n.MessageKeyException;
+
 /**
  * Raised when a requested resource does not exist. Thrown by controllers and mapped to an RFC 9457
  * {@code 404} by {@link GlobalExceptionHandler}. The message is safe to surface (it describes the
  * missing resource, not internal state).
  */
-public class NotFoundException extends RuntimeException {
+public class NotFoundException extends RuntimeException implements MessageKeyException {
+
+  private final String messageKey;
+  private final Object[] messageArguments;
 
   /**
    * Creates the exception.
    *
-   * @param message a human-readable description of what was not found
+   * @param messageKey the message-bundle key
+   * @param messageArguments values interpolated into the localized message
    */
-  public NotFoundException(String message) {
-    super(message);
+  public NotFoundException(String messageKey, Object... messageArguments) {
+    super(messageKey);
+    this.messageKey = messageKey;
+    this.messageArguments = messageArguments.clone();
+  }
+
+  @Override
+  public String messageKey() {
+    return messageKey;
+  }
+
+  @Override
+  public Object[] messageArguments() {
+    return messageArguments.clone();
   }
 }

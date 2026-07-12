@@ -85,7 +85,7 @@ public class AccountController {
   public AccountDto get(@PathVariable Long id) {
     return accountService
         .get(id)
-        .orElseThrow(() -> new NotFoundException("No account with id " + id));
+        .orElseThrow(() -> new NotFoundException("error.account-not-found", id));
   }
 
   /**
@@ -101,6 +101,6 @@ public class AccountController {
       @PathVariable Long id, @Valid @RequestBody AccountUpdateRequest request) {
     return accountService
         .update(id, request.status(), request.realms(), request.roleIds())
-        .orElseThrow(() -> new NotFoundException("No account with id " + id));
+        .orElseThrow(() -> new NotFoundException("error.account-not-found", id));
   }
 }

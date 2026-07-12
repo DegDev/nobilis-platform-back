@@ -65,9 +65,7 @@ public class NotificationTypeController {
         .findType(key)
         .map(NotificationTypeDto::from)
         .orElseThrow(
-            () ->
-                new NotificationTypeNotFoundException(
-                    "Notification type '" + key + "' does not exist"));
+            () -> new NotificationTypeNotFoundException("error.notification-type-not-found", key));
   }
 
   @PostMapping
@@ -90,7 +88,7 @@ public class NotificationTypeController {
   @DeleteMapping("/{key}")
   public ResponseEntity<Void> delete(@PathVariable String key) {
     if (!notificationsService.deleteType(key)) {
-      throw new NotFoundException("Notification type '" + key + "' does not exist");
+      throw new NotFoundException("error.notification-type-not-found", key);
     }
     return ResponseEntity.noContent().build();
   }

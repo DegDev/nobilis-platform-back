@@ -34,7 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
  * {@link ContentBlockNotFoundException}; upserting or removing a translation with a
  * blank/unsupported locale throws {@link
  * io.github.degdev.engine.common.i18n.UnsupportedLocaleException}. The public read path ({@link
- * #readPublished}) is the opposite by design — it never errors, falling back to {@code ru} per
+ * #readPublished}) is the opposite by design — it never errors, falling back to {@code en} per
  * {@link LocaleResolver}'s locked contract, and only ever sees {@link ContentStatus#PUBLISHED}
  * blocks.
  *
@@ -61,7 +61,7 @@ public class ContentBlockService {
   @Transactional
   public ContentBlock create(String key, ContentStatus status) {
     if (repository.findByKey(key).isPresent()) {
-      throw new ContentBlockConflictException("Content block key '" + key + "' already exists");
+      throw new ContentBlockConflictException("error.content-block-key-exists", key);
     }
     log.debug("Creating content block '{}' ({})", key, status);
     return repository.save(new ContentBlock(key, status));
@@ -146,7 +146,7 @@ public class ContentBlockService {
     boolean removed = block.getTranslations().removeIf(t -> t.getLocale().equals(normalizedLocale));
     if (!removed) {
       throw new ContentBlockNotFoundException(
-          "Content block '" + key + "' has no '" + normalizedLocale + "' translation");
+          "error.content-block-translation-not-found", key, normalizedLocale);
     }
     log.debug("Removed '{}' translation from content block '{}'", normalizedLocale, key);
     return repository.save(block);
@@ -173,14 +173,14 @@ public class ContentBlockService {
 
   /**
    * Public read path: the {@link ContentStatus#PUBLISHED} body for {@code key} in the requested
-   * locale, falling back to {@code ru} per {@link LocaleResolver}'s contract when the exact locale
+   * locale, falling back to {@code en} per {@link LocaleResolver}'s contract when the exact locale
    * is missing or unsupported. Never errors on bad input; a DRAFT block or an absent key/body
    * simply yields no result.
    *
    * @param key the content block key
    * @param locale the raw requested locale code (e.g. from {@code ?locale=}); may be blank/null
    * @return the resolved body, or empty if the block is absent, not PUBLISHED, or has no body in
-   *     the resolved locale nor the {@code ru} fallback
+   *     the resolved locale nor the {@code en} fallback
    */
   @Transactional(readOnly = true)
   public Optional<String> readPublished(String key, String locale) {
@@ -205,8 +205,7 @@ public class ContentBlockService {
     return repository
         .findByKey(key)
         .map(ContentBlockService::withTranslationsLoaded)
-        .orElseThrow(
-            () -> new ContentBlockNotFoundException("Content block '" + key + "' does not exist"));
+        .orElseThrow(() -> new ContentBlockNotFoundException("error.content-block-not-found", key));
   }
 
   /** Rejects a blank or unsupported locale code; otherwise returns it trimmed and lower-cased. */

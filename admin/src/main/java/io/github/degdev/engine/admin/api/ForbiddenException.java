@@ -15,16 +15,28 @@
  */
 package io.github.degdev.engine.admin.api;
 
+import io.github.degdev.engine.common.i18n.MessageKeyException;
+
 /**
  * Raised when an authenticated, admitted caller lacks the specific permission a handler requires.
  * Thrown by {@link RequiresPermissionInterceptor} and mapped to an RFC 9457 {@code 403} by {@link
  * GlobalExceptionHandler}. The message never names what was missing — it is not a capability
  * oracle.
  */
-public class ForbiddenException extends RuntimeException {
+public class ForbiddenException extends RuntimeException implements MessageKeyException {
 
   /** Creates the exception with a fixed, non-revealing message. */
   public ForbiddenException() {
-    super("You do not have permission to perform this action");
+    super("error.forbidden");
+  }
+
+  @Override
+  public String messageKey() {
+    return "error.forbidden";
+  }
+
+  @Override
+  public Object[] messageArguments() {
+    return new Object[0];
   }
 }

@@ -21,6 +21,7 @@ import io.github.degdev.engine.auth.role.RoleConflictException;
 import io.github.degdev.engine.auth.role.UnknownPermissionException;
 import io.github.degdev.engine.common.cms.ContentBlockConflictException;
 import io.github.degdev.engine.common.cms.ContentBlockNotFoundException;
+import io.github.degdev.engine.common.i18n.MessageKeyException;
 import io.github.degdev.engine.common.i18n.UnsupportedLocaleException;
 import io.github.degdev.engine.common.notifications.NotificationConflictException;
 import io.github.degdev.engine.common.notifications.NotificationTypeNotFoundException;
@@ -28,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -71,6 +74,11 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+  private final MessageSource messageSource;
+
+  public GlobalExceptionHandler(MessageSource messageSource) {
+    this.messageSource = messageSource;
+  }
 
   @Override
   protected ResponseEntity<Object> handleMethodArgumentNotValid(
@@ -79,7 +87,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
       HttpStatusCode status,
       WebRequest request) {
     ProblemDetail body = ex.getBody();
-    body.setDetail("Validation failed");
+    body.setDetail(message("validation.failed"));
     List<Map<String, String>> fieldErrors =
         ex.getBindingResult().getFieldErrors().stream()
             .map(
@@ -88,7 +96,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                         "field",
                         error.getField(),
                         "message",
-                        error.getDefaultMessage() == null ? "invalid" : error.getDefaultMessage()))
+                        error.getDefaultMessage() == null
+                            ? message("validation.invalid")
+                            : error.getDefaultMessage()))
             .toList();
     body.setProperty("fieldErrors", fieldErrors);
     return handleExceptionInternal(ex, body, headers, status, request);
@@ -102,7 +112,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(NotFoundException.class)
   public ProblemDetail handleNotFound(NotFoundException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, message(ex));
   }
 
   /**
@@ -113,7 +123,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(ForbiddenException.class)
   public ProblemDetail handleForbidden(ForbiddenException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, message(ex));
   }
 
   /**
@@ -125,7 +135,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(RoleConflictException.class)
   public ProblemDetail handleConflict(RoleConflictException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, message(ex));
   }
 
   /**
@@ -136,7 +146,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(UnknownPermissionException.class)
   public ProblemDetail handleUnknownPermission(UnknownPermissionException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message(ex));
   }
 
   /**
@@ -147,7 +157,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(UnknownRealmException.class)
   public ProblemDetail handleUnknownRealm(UnknownRealmException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message(ex));
   }
 
   /**
@@ -158,7 +168,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(UnknownRoleException.class)
   public ProblemDetail handleUnknownRole(UnknownRoleException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message(ex));
   }
 
   /**
@@ -169,7 +179,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(ContentBlockConflictException.class)
   public ProblemDetail handleContentBlockConflict(ContentBlockConflictException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, message(ex));
   }
 
   /**
@@ -180,7 +190,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(ContentBlockNotFoundException.class)
   public ProblemDetail handleContentBlockNotFound(ContentBlockNotFoundException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, message(ex));
   }
 
   /**
@@ -192,7 +202,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(UnsupportedLocaleException.class)
   public ProblemDetail handleUnsupportedLocale(UnsupportedLocaleException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message(ex));
   }
 
   /**
@@ -201,13 +211,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
    */
   @ExceptionHandler(NotificationConflictException.class)
   public ProblemDetail handleNotificationConflict(NotificationConflictException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, message(ex));
   }
 
   /** Maps a request naming an unknown notification type/template/translation to {@code 404}. */
   @ExceptionHandler(NotificationTypeNotFoundException.class)
   public ProblemDetail handleNotificationTypeNotFound(NotificationTypeNotFoundException ex) {
-    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, message(ex));
   }
 
   /**
@@ -221,6 +231,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   public ProblemDetail handleUnexpected(Exception ex) {
     LOG.error("Unhandled exception in admin API", ex);
     return ProblemDetail.forStatusAndDetail(
-        HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+        HttpStatus.INTERNAL_SERVER_ERROR, message("error.unexpected"));
+  }
+
+  private String message(MessageKeyException exception) {
+    return messageSource.getMessage(
+        exception.messageKey(), exception.messageArguments(), LocaleContextHolder.getLocale());
+  }
+
+  private String message(String key) {
+    return messageSource.getMessage(key, null, LocaleContextHolder.getLocale());
   }
 }

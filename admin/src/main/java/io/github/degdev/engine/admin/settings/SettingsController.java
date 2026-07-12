@@ -98,7 +98,7 @@ public class SettingsController {
     return settingsService
         .find(key)
         .map(SettingDto::from)
-        .orElseThrow(() -> new NotFoundException("No setting with key '" + key + "'"));
+        .orElseThrow(() -> new NotFoundException("error.setting-not-found", key));
   }
 
   /**
@@ -138,7 +138,7 @@ public class SettingsController {
   @DeleteMapping("/{key}")
   public ResponseEntity<Void> delete(@PathVariable String key) {
     if (!settingsService.delete(key)) {
-      throw new NotFoundException("No setting with key '" + key + "'");
+      throw new NotFoundException("error.setting-not-found", key);
     }
     return ResponseEntity.noContent().build();
   }

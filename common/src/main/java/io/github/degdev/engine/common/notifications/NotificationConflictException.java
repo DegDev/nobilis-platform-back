@@ -15,15 +15,32 @@
  */
 package io.github.degdev.engine.common.notifications;
 
+import io.github.degdev.engine.common.i18n.MessageKeyException;
+
 /**
  * Signals that a notification operation conflicts with the current state — a duplicate type key on
  * create, or a duplicate (type, transport) template. A domain signal, deliberately free of any
  * HTTP/web type; the admin layer maps it to an RFC 9457 {@code 409 Conflict}. The message names the
  * blocker and is safe to surface.
  */
-public class NotificationConflictException extends RuntimeException {
+public class NotificationConflictException extends RuntimeException implements MessageKeyException {
 
-  public NotificationConflictException(String message) {
-    super(message);
+  private final String messageKey;
+  private final Object[] messageArguments;
+
+  public NotificationConflictException(String messageKey, Object... messageArguments) {
+    super(messageKey);
+    this.messageKey = messageKey;
+    this.messageArguments = messageArguments.clone();
+  }
+
+  @Override
+  public String messageKey() {
+    return messageKey;
+  }
+
+  @Override
+  public Object[] messageArguments() {
+    return messageArguments.clone();
   }
 }

@@ -15,19 +15,37 @@
  */
 package io.github.degdev.engine.common.cms;
 
+import io.github.degdev.engine.common.i18n.MessageKeyException;
+
 /**
  * Signals that a requested content block, or a translation of one, does not exist. A domain signal,
  * deliberately free of any HTTP/web type; the admin layer maps it to an RFC 9457 {@code 404 Not
  * Found}. The message is safe to surface (it describes the missing resource, not internal state).
  */
-public class ContentBlockNotFoundException extends RuntimeException {
+public class ContentBlockNotFoundException extends RuntimeException implements MessageKeyException {
+
+  private final String messageKey;
+  private final Object[] messageArguments;
 
   /**
    * Creates the exception.
    *
-   * @param message a human-readable description of what was not found
+   * @param messageKey the message-bundle key
+   * @param messageArguments values interpolated into the localized message
    */
-  public ContentBlockNotFoundException(String message) {
-    super(message);
+  public ContentBlockNotFoundException(String messageKey, Object... messageArguments) {
+    super(messageKey);
+    this.messageKey = messageKey;
+    this.messageArguments = messageArguments.clone();
+  }
+
+  @Override
+  public String messageKey() {
+    return messageKey;
+  }
+
+  @Override
+  public Object[] messageArguments() {
+    return messageArguments.clone();
   }
 }

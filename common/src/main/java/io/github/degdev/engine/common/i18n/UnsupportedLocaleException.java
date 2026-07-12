@@ -22,7 +22,9 @@ package io.github.degdev.engine.common.i18n;
  * signal, deliberately free of any HTTP/web type; the admin layer maps it to an RFC 9457 {@code 400
  * Bad Request}.
  */
-public class UnsupportedLocaleException extends RuntimeException {
+public class UnsupportedLocaleException extends RuntimeException implements MessageKeyException {
+
+  private final String locale;
 
   /**
    * Creates the exception.
@@ -31,5 +33,16 @@ public class UnsupportedLocaleException extends RuntimeException {
    */
   public UnsupportedLocaleException(String locale) {
     super("Unsupported locale: '" + locale + "'");
+    this.locale = locale;
+  }
+
+  @Override
+  public String messageKey() {
+    return "error.unsupported-locale";
+  }
+
+  @Override
+  public Object[] messageArguments() {
+    return new Object[] {locale};
   }
 }

@@ -83,7 +83,7 @@ public class RoleService {
   public Role create(String code, String name, Set<String> permissions) {
     Set<String> perms = validated(permissions);
     if (repository.findByCode(code).isPresent()) {
-      throw new RoleConflictException("Role code '" + code + "' already exists");
+      throw new RoleConflictException("error.role-code-exists", code);
     }
     Role role = new Role(code, name);
     perms.forEach(role::addPermission);
@@ -132,7 +132,7 @@ public class RoleService {
               long assigned = repository.countAssignedAccounts(role);
               if (assigned > 0) {
                 throw new RoleConflictException(
-                    "Role '" + role.getCode() + "' is assigned to " + assigned + " account(s)");
+                    "error.role-assigned-to-accounts", role.getCode(), assigned);
               }
               repository.delete(role);
               log.debug("Deleted role '{}'", role.getCode());

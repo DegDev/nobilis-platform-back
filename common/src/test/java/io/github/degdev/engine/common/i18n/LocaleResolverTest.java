@@ -28,8 +28,13 @@ class LocaleResolverTest {
   private final LocaleResolver resolver = new LocaleResolver();
 
   @Test
-  void defaultLocaleIsRussian() {
-    assertThat(LocaleResolver.DEFAULT_LOCALE).isEqualTo(Locale.forLanguageTag("ru"));
+  void defaultLocaleIsEnglish() {
+    assertThat(LocaleResolver.DEFAULT_LOCALE).isEqualTo(Locale.forLanguageTag("en"));
+  }
+
+  @Test
+  void resolvesSupportedEnglish() {
+    assertThat(resolver.resolve("en")).isEqualTo(Locale.forLanguageTag("en"));
   }
 
   @Test
@@ -49,7 +54,7 @@ class LocaleResolverTest {
 
   @ParameterizedTest
   @NullSource
-  @ValueSource(strings = {"", "   ", "en", "de", "xx", "russian"})
+  @ValueSource(strings = {"", "   ", "de", "xx", "russian"})
   void fallsBackToDefaultForAbsentOrUnsupported(String requested) {
     assertThat(resolver.resolve(requested)).isEqualTo(LocaleResolver.DEFAULT_LOCALE);
   }

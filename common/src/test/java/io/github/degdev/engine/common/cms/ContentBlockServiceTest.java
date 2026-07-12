@@ -31,7 +31,7 @@ import org.mockito.Mockito;
 /**
  * Unit-level: a mocked repository with a real {@link LocaleResolver} proves the REJECT invariants
  * (duplicate key, unknown block/translation, unsupported locale) and the public read path's
- * ru-fallback and DRAFT-exclusion behavior.
+ * en-fallback and DRAFT-exclusion behavior.
  */
 class ContentBlockServiceTest {
 
@@ -175,14 +175,14 @@ class ContentBlockServiceTest {
   }
 
   @Test
-  void readPublishedFallsBackToRuWhenTheRequestedLocaleIsMissing() {
+  void readPublishedFallsBackToEnWhenTheRequestedLocaleIsMissing() {
     ContentBlock block = new ContentBlock("home.hero", ContentStatus.PUBLISHED);
-    block.addTranslation(new ContentTranslation("ru", "Привет"));
+    block.addTranslation(new ContentTranslation("en", "Hello"));
     when(repository.findByKey("home.hero")).thenReturn(Optional.of(block));
 
-    assertThat(service.readPublished("home.hero", "ro")).contains("Привет");
-    assertThat(service.readPublished("home.hero", "unsupported-xx")).contains("Привет");
-    assertThat(service.readPublished("home.hero", null)).contains("Привет");
+    assertThat(service.readPublished("home.hero", "ro")).contains("Hello");
+    assertThat(service.readPublished("home.hero", "unsupported-xx")).contains("Hello");
+    assertThat(service.readPublished("home.hero", null)).contains("Hello");
   }
 
   @Test

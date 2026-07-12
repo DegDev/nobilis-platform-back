@@ -15,15 +15,33 @@
  */
 package io.github.degdev.engine.common.notifications;
 
+import io.github.degdev.engine.common.i18n.MessageKeyException;
+
 /**
  * Signals that a requested notification type, template, or translation does not exist. A domain
  * signal, deliberately free of any HTTP/web type; the admin layer maps it to an RFC 9457 {@code 404
  * Not Found}. The message is safe to surface (it describes the missing resource, not internal
  * state).
  */
-public class NotificationTypeNotFoundException extends RuntimeException {
+public class NotificationTypeNotFoundException extends RuntimeException
+    implements MessageKeyException {
 
-  public NotificationTypeNotFoundException(String message) {
-    super(message);
+  private final String messageKey;
+  private final Object[] messageArguments;
+
+  public NotificationTypeNotFoundException(String messageKey, Object... messageArguments) {
+    super(messageKey);
+    this.messageKey = messageKey;
+    this.messageArguments = messageArguments.clone();
+  }
+
+  @Override
+  public String messageKey() {
+    return messageKey;
+  }
+
+  @Override
+  public Object[] messageArguments() {
+    return messageArguments.clone();
   }
 }

@@ -27,7 +27,7 @@ import org.mockito.Mockito;
 
 /**
  * Unit-level: mocked repositories with a real {@link LocaleResolver} prove {@link
- * NotificationsService#resolveForDispatch}'s locale exact-match, {@code ru}-fallback,
+ * NotificationsService#resolveForDispatch}'s locale exact-match, {@code en}-fallback,
  * disabled-type-exclusion and no-match behavior — the milestone-04 dispatch read path.
  */
 class NotificationsServiceTest {
@@ -61,10 +61,10 @@ class NotificationsServiceTest {
   }
 
   @Test
-  void resolveForDispatchFallsBackToRuWhenTheRequestedLocaleIsMissing() {
+  void resolveForDispatchFallsBackToEnWhenTheRequestedLocaleIsMissing() {
     NotificationType type = new NotificationType("order.created", true, null);
     NotificationTemplate template = new NotificationTemplate(type, Transport.EMAIL);
-    template.addTranslation(new NotificationTemplateTranslation("ru", "Заказ создан", "Тело"));
+    template.addTranslation(new NotificationTemplateTranslation("en", "Order created", "Body"));
     when(typeRepository.findByKey("order.created")).thenReturn(Optional.of(type));
     when(templateRepository.findByTypeIdAndTransport(any(), any()))
         .thenReturn(Optional.of(template));
@@ -73,7 +73,7 @@ class NotificationsServiceTest {
         service.resolveForDispatch("order.created", Transport.EMAIL, "ro");
 
     assertThat(resolved).isPresent();
-    assertThat(resolved.get().getBody()).isEqualTo("Тело");
+    assertThat(resolved.get().getBody()).isEqualTo("Body");
   }
 
   @Test

@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.auth.role;
 
+import io.github.degdev.engine.common.i18n.MessageKeyException;
 import java.util.Set;
 
 /**
@@ -23,7 +24,9 @@ import java.util.Set;
  * permission would be a silent authorization bug at the gate. A domain signal with no HTTP/web
  * type; the admin layer maps it to an RFC 9457 {@code 400 Bad Request}.
  */
-public class UnknownPermissionException extends RuntimeException {
+public class UnknownPermissionException extends RuntimeException implements MessageKeyException {
+
+  private final Set<String> unknownPermissions;
 
   /**
    * Creates the exception.
@@ -32,5 +35,16 @@ public class UnknownPermissionException extends RuntimeException {
    */
   public UnknownPermissionException(Set<String> unknownPermissions) {
     super("Unknown permission(s): " + unknownPermissions);
+    this.unknownPermissions = Set.copyOf(unknownPermissions);
+  }
+
+  @Override
+  public String messageKey() {
+    return "error.unknown-permissions";
+  }
+
+  @Override
+  public Object[] messageArguments() {
+    return new Object[] {unknownPermissions};
   }
 }
