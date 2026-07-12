@@ -94,14 +94,14 @@ class PortalContentIntegrationTest {
   }
 
   @Test
-  void unknownLocaleFallsBackToRuInsteadOfErroring() throws Exception {
+  void unknownLocaleFallsBackToEnInsteadOfErroring() throws Exception {
     contentBlockService.create("landing.locale-fallback", ContentStatus.DRAFT);
-    contentBlockService.upsertTranslation("landing.locale-fallback", "ru", "По умолчанию");
+    contentBlockService.upsertTranslation("landing.locale-fallback", "en", "Default");
     contentBlockService.updateStatus("landing.locale-fallback", ContentStatus.PUBLISHED);
 
     mockMvc
         .perform(get(BASE + "/landing.locale-fallback").param("locale", "fr"))
         .andExpect(status().isOk())
-        .andExpect(content().string("По умолчанию"));
+        .andExpect(content().string("Default"));
   }
 }

@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Never returns a 5xx for a missing or unpublished block: {@link
  * ContentBlockService#readPublished} "never errors" by contract, returning {@link Optional#empty()}
  * for an absent key, a DRAFT block, or an unsupported/blank locale (which it silently resolves via
- * its {@code ru} fallback instead of rejecting). This controller maps that emptiness to a plain
+ * its {@code en} fallback instead of rejecting). This controller maps that emptiness to a plain
  * {@code 404}, and a present body to a plain-text {@code 200} — deliberately not the admin {@code
  * ContentBlockDto} shape, which carries draft/publish workflow fields this public path has no use
  * for.
@@ -64,7 +64,7 @@ public class PortalContentController {
    *
    * @param key the content block key
    * @param locale the requested locale code (e.g. {@code ru}, {@code ro}); may be
-   *     blank/null/unknown — {@link ContentBlockService#readPublished} falls back to {@code ru}
+   *     blank/null/unknown — {@link ContentBlockService#readPublished} falls back to {@code en}
    *     rather than rejecting
    * @return {@code 200} with the plain-text body if a published translation resolves, else {@code
    *     404} (never a {@code 5xx})

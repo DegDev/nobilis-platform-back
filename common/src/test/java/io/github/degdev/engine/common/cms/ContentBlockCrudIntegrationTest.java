@@ -33,7 +33,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * ContentBlockFlywayIntegrationTest}): {@link ContentBlockService} is autowired only because the
  * EMF is present (the stateless-host absence case is covered by {@link
  * ContentBlockAutoConfigurationTest}); CRUD + translation upsert/remove round-trip; the public read
- * path resolves ru/ro and falls back to ru; a DRAFT block is excluded from the public read but
+ * path resolves en/ru/ro and falls back to en; a DRAFT block is excluded from the public read but
  * visible via the admin list; duplicate key / unknown block / unknown locale are rejected. {@code
  * ddl-auto=validate} additionally proves entity↔migration parity.
  */
@@ -49,6 +49,7 @@ class ContentBlockCrudIntegrationTest {
   @Test
   void fullRoundTripThroughTheService() {
     service.create("home.hero", ContentStatus.DRAFT);
+    service.upsertTranslation("home.hero", "en", "Hello");
     service.upsertTranslation("home.hero", "ru", "Привет");
     service.upsertTranslation("home.hero", "ro", "Salut");
 
@@ -61,12 +62,12 @@ class ContentBlockCrudIntegrationTest {
     service.updateStatus("home.hero", ContentStatus.PUBLISHED);
 
     assertThat(service.readPublished("home.hero", "ro")).contains("Salut");
-    assertThat(service.readPublished("home.hero", "unsupported-xx")).contains("Привет");
+    assertThat(service.readPublished("home.hero", "unsupported-xx")).contains("Hello");
 
     service.removeTranslation("home.hero", "ro");
     assertThat(service.find("home.hero").orElseThrow().getTranslations())
         .extracting(ContentTranslation::getLocale)
-        .containsExactly("ru");
+        .containsExactlyInAnyOrder("en", "ru");
 
     assertThat(service.delete("home.hero")).isTrue();
     assertThat(service.find("home.hero")).isEmpty();

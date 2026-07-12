@@ -2,7 +2,7 @@
 
 **Type:** reusable playbook (wiring recipe) &middot; **Scope:** backend only (JVM / Spring Boot +
 Kafka wiring — no frontend counterpart) &middot; **Status:** ready (extracted from six real
-instances) &middot; **Updated:** 2026-07-11
+instances) &middot; **Updated:** 2026-07-12
 
 **Reference (real files this playbook is extracted from):**
 
@@ -203,6 +203,23 @@ adapter meaningful (a token, a login+sender pair), not a separate boolean flag l
   some only body) instead of Telegram/SMS getting a narrower interface. Documented at the `Transport`
   enum constant itself, not just the adapter (`Transport.java`, `TELEGRAM`'s own Javadoc: "Templates
   typically use body only (subject is ignored)").
+- **`nobilis.integration.bus.kafka.bootstrap-servers` has no `@DefaultValue`
+  (`KafkaEventBusProperties.java:27`) — opting into `nobilis.integration.bus=kafka` without it also set
+  does not fail fast.** Spring's relaxed record binding happily constructs the properties record with
+  `bootstrapServers = null`; that null then reaches `new DefaultKafkaProducerFactory<>(configs)`
+  (`KafkaEventBusAutoConfiguration.java:79`), whose internal `new ConcurrentHashMap<>(configs)` copy
+  rejects the null value and throws a **message-less** `NullPointerException` several frames deep —
+  the outer `BeanCreationException` reads "threw exception with message: null", which gives no hint
+  that a property is missing. Both properties are mandatory together; there is no working single-flag
+  opt-in.
+- **The local dev broker (`stack.yml`'s `kafka` service) exposes two listeners with different
+  audiences — pointing at the wrong one connects but then dies on metadata.** `PLAINTEXT://kafka:9092`
+  is advertised for containers on the compose network only; `PLAINTEXT_HOST://localhost:29092` is the
+  one host-machine clients (a locally run `IntegrationApplication`) must use. Bootstrapping against the
+  internal port still succeeds (it's port-mapped), but the broker's metadata response then advertises
+  the internal `kafka` hostname, which the host cannot resolve — surfaces as a `NetworkClient`
+  `UnknownHostException: kafka` retry loop *after* the app has already started successfully. Not fixed
+  by editing `/etc/hosts` or the compose file; the client-side property must target the host listener.
 
 ## The async-consumer checklist (for the NEXT handler or transport adapter)
 

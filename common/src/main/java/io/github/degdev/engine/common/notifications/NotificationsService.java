@@ -65,7 +65,7 @@ public class NotificationsService {
   @Transactional
   public NotificationType createType(String key, boolean enabled, String description) {
     if (typeRepository.findByKey(key).isPresent()) {
-      throw new NotificationConflictException("Notification type key '" + key + "' already exists");
+      throw new NotificationConflictException("error.notification-type-key-exists", key);
     }
     log.debug(
         "Creating notification type '{}' (enabled={}, description={})", key, enabled, description);
@@ -151,7 +151,7 @@ public class NotificationsService {
     NotificationType type = requireType(typeKey);
     if (templateRepository.findByTypeIdAndTransport(type.getId(), transport).isPresent()) {
       throw new NotificationConflictException(
-          "Template for type '" + typeKey + "' + transport '" + transport + "' already exists");
+          "error.notification-template-exists", typeKey, transport);
     }
     log.debug("Creating notification template for type '{}' + transport '{}'", typeKey, transport);
     return templateRepository.save(new NotificationTemplate(type, transport));
@@ -281,13 +281,10 @@ public class NotificationsService {
         template.getTranslations().removeIf(t -> t.getLocale().equals(normalizedLocale));
     if (!removed) {
       throw new NotificationTypeNotFoundException(
-          "Template (type '"
-              + typeKey
-              + "', transport '"
-              + transport
-              + "') has no '"
-              + normalizedLocale
-              + "' translation");
+          "error.notification-template-translation-not-found",
+          typeKey,
+          transport,
+          normalizedLocale);
     }
     log.debug(
         "Removed '{}' translation from template (type '{}', transport '{}')",
@@ -303,7 +300,7 @@ public class NotificationsService {
 
   /**
    * Dispatch read path: the translation to send for a type + transport + locale, resolving the
-   * exact locale then falling back to {@code ru} per {@link LocaleResolver}'s contract, same
+   * exact locale then falling back to {@code en} per {@link LocaleResolver}'s contract, same
    * fallback shape as {@code ContentBlockService#readPublished}. Never errors on bad input; a
    * disabled type, an absent type/template, or no matching translation simply yields no result.
    *
@@ -311,7 +308,7 @@ public class NotificationsService {
    * @param transport the transport channel
    * @param locale the raw requested locale code; may be blank/null
    * @return the resolved translation, or empty if the type is disabled/absent, the template is
-   *     absent, or it has no translation in the resolved locale nor the {@code ru} fallback
+   *     absent, or it has no translation in the resolved locale nor the {@code en} fallback
    */
   @Transactional(readOnly = true)
   public Optional<NotificationTemplateTranslation> resolveForDispatch(
@@ -342,9 +339,7 @@ public class NotificationsService {
     return typeRepository
         .findByKey(key)
         .orElseThrow(
-            () ->
-                new NotificationTypeNotFoundException(
-                    "Notification type '" + key + "' does not exist"));
+            () -> new NotificationTypeNotFoundException("error.notification-type-not-found", key));
   }
 
   private NotificationTemplate requireTemplate(String typeKey, Transport transport) {
@@ -355,11 +350,7 @@ public class NotificationsService {
         .orElseThrow(
             () ->
                 new NotificationTypeNotFoundException(
-                    "Template for type '"
-                        + typeKey
-                        + "' + transport '"
-                        + transport
-                        + "' does not exist"));
+                    "error.notification-template-not-found", typeKey, transport));
   }
 
   private static Optional<NotificationTemplateTranslation> translationFor(

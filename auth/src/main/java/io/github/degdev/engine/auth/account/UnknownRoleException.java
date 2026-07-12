@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.auth.account;
 
+import io.github.degdev.engine.common.i18n.MessageKeyException;
 import java.util.Set;
 
 /**
@@ -22,7 +23,9 @@ import java.util.Set;
  * exception carrying no HTTP/web type; the admin layer maps it to an RFC 9457 {@code 400}. Mirrors
  * {@code UnknownPermissionException} for permissions.
  */
-public class UnknownRoleException extends RuntimeException {
+public class UnknownRoleException extends RuntimeException implements MessageKeyException {
+
+  private final Set<Long> unknownRoleIds;
 
   /**
    * Creates the exception naming the offending role ids.
@@ -31,5 +34,16 @@ public class UnknownRoleException extends RuntimeException {
    */
   public UnknownRoleException(Set<Long> unknownRoleIds) {
     super("Unknown role id(s): " + unknownRoleIds);
+    this.unknownRoleIds = Set.copyOf(unknownRoleIds);
+  }
+
+  @Override
+  public String messageKey() {
+    return "error.unknown-role-ids";
+  }
+
+  @Override
+  public Object[] messageArguments() {
+    return new Object[] {unknownRoleIds};
   }
 }

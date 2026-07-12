@@ -103,7 +103,7 @@ public class RoleController {
     return roleService
         .find(id)
         .map(RoleDto::from)
-        .orElseThrow(() -> new NotFoundException("No role with id " + id));
+        .orElseThrow(() -> new NotFoundException("error.role-not-found", id));
   }
 
   /**
@@ -132,7 +132,7 @@ public class RoleController {
     return roleService
         .update(id, request.name(), request.permissions())
         .map(RoleDto::from)
-        .orElseThrow(() -> new NotFoundException("No role with id " + id));
+        .orElseThrow(() -> new NotFoundException("error.role-not-found", id));
   }
 
   /**
@@ -145,7 +145,7 @@ public class RoleController {
   @DeleteMapping("/{id:\\d+}")
   public ResponseEntity<Void> delete(@PathVariable Long id) {
     if (!roleService.delete(id)) {
-      throw new NotFoundException("No role with id " + id);
+      throw new NotFoundException("error.role-not-found", id);
     }
     return ResponseEntity.noContent().build();
   }

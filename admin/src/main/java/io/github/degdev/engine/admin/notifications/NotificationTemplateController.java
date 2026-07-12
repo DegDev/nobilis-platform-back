@@ -70,11 +70,7 @@ public class NotificationTemplateController {
         .orElseThrow(
             () ->
                 new NotificationTypeNotFoundException(
-                    "Template for type '"
-                        + typeKey
-                        + "' + transport '"
-                        + transport
-                        + "' does not exist"));
+                    "error.notification-template-not-found", typeKey, transport));
   }
 
   @PostMapping

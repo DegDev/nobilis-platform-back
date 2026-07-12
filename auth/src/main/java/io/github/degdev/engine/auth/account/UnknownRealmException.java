@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.auth.account;
 
+import io.github.degdev.engine.common.i18n.MessageKeyException;
 import java.util.Set;
 
 /**
@@ -22,7 +23,9 @@ import java.util.Set;
  * carrying no HTTP/web type; the admin layer maps it to an RFC 9457 {@code 400}. Mirrors {@code
  * UnknownPermissionException} for roles.
  */
-public class UnknownRealmException extends RuntimeException {
+public class UnknownRealmException extends RuntimeException implements MessageKeyException {
+
+  private final Set<String> unknownRealms;
 
   /**
    * Creates the exception naming the offending realm values.
@@ -31,5 +34,16 @@ public class UnknownRealmException extends RuntimeException {
    */
   public UnknownRealmException(Set<String> unknownRealms) {
     super("Unknown realm(s): " + unknownRealms);
+    this.unknownRealms = Set.copyOf(unknownRealms);
+  }
+
+  @Override
+  public String messageKey() {
+    return "error.unknown-realms";
+  }
+
+  @Override
+  public Object[] messageArguments() {
+    return new Object[] {unknownRealms};
   }
 }
