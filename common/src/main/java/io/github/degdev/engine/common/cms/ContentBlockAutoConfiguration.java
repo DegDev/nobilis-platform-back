@@ -46,7 +46,7 @@ public class ContentBlockAutoConfiguration {
    *
    * @param repository the content block repository (scanned via {@code SettingsAutoConfiguration}'s
    *     auto-configuration package)
-   * @param localeResolver the engine's locale resolver, for the public read path's ru-fallback
+   * @param localeResolver the engine's locale resolver, for the public read path's en-fallback
    * @return the content block service
    */
   @Bean
