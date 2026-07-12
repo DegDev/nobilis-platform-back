@@ -123,3 +123,18 @@ as the common module, not a leak.
   bug class stays untested.
 
 **Scope:** Engine (`common` migrations + runnable properties + a new integration test). No domain code.
+
+---
+
+## BL-004 — Admin nav as data (sidebar sections generated, not hand-coded)
+
+**Status:** To align (deferred, not designed). Raised during 06-ai-slice recon (2026-07-12) as a
+tangent, not this milestone's scope — logged here per extract-don't-predict rather than designed now.
+
+**Idea:** replace the admin sidebar's programmatic menu entries with a data-driven registry (each
+screen/module contributes a nav section descriptor) instead of hand-editing a shell component per new
+screen. No consumer has stated the concrete contract yet; revisit once 2+ real screens make the
+hand-coded approach visibly repetitive.
+
+**Scope:** `admin` module (frontend, `nobilis-platform-front`), milestone 03 territory — not backend,
+not this milestone.
