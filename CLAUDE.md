@@ -49,8 +49,14 @@ Extension is via extension points / interfaces / bean registration. **Contracts,
 1. Determinism in the business-logic core (money/claim/state machine). AI only on fuzzy edges.
 2. Extract, don't predict: generalize from actual usage, not up front.
 3. Simplicity over flexibility: single-tenant, modular monolith, one Postgres.
-4. i18n out of the box (static RU+RO in the MVP).
+4. i18n out of the box. Native language is EN (public international engine); RU/RO are overlay
+   translations layered on top. `?locale=` is the one transport for both static and content i18n.
 5. Reproducibility: pin versions, sources-log for non-trivial decisions.
+6. ONLY UTF-8, everywhere. Source files, `.properties` bundles, and HTTP responses are UTF-8 — never
+   depend on the machine/JVM system locale. Enforced by barriers: `server.servlet.encoding.force=true`
+   + a UTF-8 `StringHttpMessageConverter` in every runnable (localized strings must survive a
+   non-UTF-8 server locale), and UTF-8 source/test encoding in the build. A response or bundle that
+   corrupts Cyrillic/Romanian under `LC_ALL=C` is a defect even if a UTF-8-locale machine hides it.
 
 ## Code conventions
 
