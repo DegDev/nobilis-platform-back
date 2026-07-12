@@ -90,7 +90,7 @@ class AiProfileMechanismIntegrationTest {
 
     assertThat(fields)
         .extracting(AiProviderField::getFieldKey)
-        .containsExactly("base-url", "model", "temperature", "top_p", "num_predict");
+        .containsExactly("base-url", "model", "temperature", "top_p", "num_predict", "no-think");
   }
 
   @Test

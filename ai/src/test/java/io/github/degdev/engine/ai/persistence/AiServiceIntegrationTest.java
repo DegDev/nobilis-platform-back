@@ -74,7 +74,7 @@ class AiServiceIntegrationTest {
 
     assertThat(fields)
         .extracting(AiFieldDescriptor::fieldKey)
-        .containsExactly("base-url", "model", "temperature", "top_p", "num_predict");
+        .containsExactly("base-url", "model", "temperature", "top_p", "num_predict", "no-think");
 
     AiFieldDescriptor baseUrl = fields.get(0);
     assertThat(baseUrl.category()).isEqualTo(AiFieldCategory.INFRA);
@@ -87,6 +87,11 @@ class AiServiceIntegrationTest {
     assertThat(temperature.type()).isEqualTo(AiFieldType.NUMBER);
     assertThat(temperature.minValue()).isEqualByComparingTo(BigDecimal.ZERO);
     assertThat(temperature.maxValue()).isEqualByComparingTo(BigDecimal.ONE);
+
+    AiFieldDescriptor noThink = fields.get(5);
+    assertThat(noThink.category()).isEqualTo(AiFieldCategory.OPERATIONAL);
+    assertThat(noThink.type()).isEqualTo(AiFieldType.BOOLEAN);
+    assertThat(noThink.defaultValue()).isEqualTo("true");
   }
 
   @Test
@@ -99,7 +104,8 @@ class AiServiceIntegrationTest {
         .containsEntry("model", "llama3")
         .containsEntry("temperature", "0.7")
         .containsEntry("top_p", "0.9")
-        .containsEntry("num_predict", "512");
+        .containsEntry("num_predict", "512")
+        .containsEntry("no-think", "true");
   }
 
   @Test
