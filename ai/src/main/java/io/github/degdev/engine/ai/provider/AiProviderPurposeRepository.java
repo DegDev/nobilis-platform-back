@@ -17,6 +17,7 @@ package io.github.degdev.engine.ai.provider;
 
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 /**
  * Spring Data repository for {@link AiProviderPurpose} links. Needed starting slice 2: resolving a
@@ -33,4 +34,12 @@ public interface AiProviderPurposeRepository
    * @return the matching links, ordered by {@code sortOrder}
    */
   List<AiProviderPurpose> findByIdPurposeOrderBySortOrder(String purpose);
+
+  /**
+   * Every distinct purpose the catalog knows about — the admin screen's purpose picker (slice 4).
+   *
+   * @return the distinct purpose keys, alphabetical
+   */
+  @Query("select distinct p.id.purpose from AiProviderPurpose p order by p.id.purpose")
+  List<String> findDistinctPurposes();
 }

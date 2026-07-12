@@ -63,14 +63,17 @@ public class AiServiceAutoConfiguration {
    * @param fieldRepository the catalog field repository
    * @param optionRepository the catalog field-option repository
    * @param purposeRepository the purpose/provider link repository
+   * @param providerRepository the provider catalog repository
    * @return the provider-defaults reader
    */
   @Bean
   public AiProviderDefaults aiProviderDefaults(
       AiProviderFieldRepository fieldRepository,
       AiProviderFieldOptionRepository optionRepository,
-      AiProviderPurposeRepository purposeRepository) {
-    return new AiProviderDefaults(fieldRepository, optionRepository, purposeRepository);
+      AiProviderPurposeRepository purposeRepository,
+      AiProviderRepository providerRepository) {
+    return new AiProviderDefaults(
+        fieldRepository, optionRepository, purposeRepository, providerRepository);
   }
 
   /**

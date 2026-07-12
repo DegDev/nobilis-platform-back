@@ -58,7 +58,7 @@ public class AiLlmAutoConfiguration {
    * @return the Ollama health-check probe
    */
   @Bean
-  OllamaHealthCheckService ollamaHealthCheckService(AiProperties properties) {
+  public OllamaHealthCheckService ollamaHealthCheckService(AiProperties properties) {
     return new OllamaHealthCheckService(RestClient.builder().baseUrl(properties.baseUrl()).build());
   }
 }

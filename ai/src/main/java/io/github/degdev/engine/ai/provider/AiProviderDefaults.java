@@ -19,6 +19,7 @@ import io.github.degdev.engine.ai.profile.AiProfileException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,32 @@ public class AiProviderDefaults {
   private final AiProviderFieldRepository fieldRepository;
   private final AiProviderFieldOptionRepository optionRepository;
   private final AiProviderPurposeRepository purposeRepository;
+  private final AiProviderRepository providerRepository;
+
+  /**
+   * Every purpose the catalog knows about — the admin screen's purpose picker (slice 4).
+   *
+   * @return the distinct purpose keys, alphabetical
+   */
+  @Transactional(readOnly = true)
+  public List<String> purposes() {
+    return purposeRepository.findDistinctPurposes();
+  }
+
+  /**
+   * The providers offered for a purpose, in display/preference order — the admin screen's provider
+   * picker (slice 4).
+   *
+   * @param purpose the purpose key
+   * @return the matching providers, ordered by the purpose link's {@code sortOrder}
+   */
+  @Transactional(readOnly = true)
+  public List<AiProvider> providers(String purpose) {
+    return purposeRepository.findByIdPurposeOrderBySortOrder(purpose).stream()
+        .map(link -> providerRepository.findById(link.getId().getProviderCode()))
+        .flatMap(Optional::stream)
+        .toList();
+  }
 
   /**
    * The field descriptors for a {@code (purpose, provider)} pair — what a data-driven admin form

@@ -26,9 +26,12 @@ import org.springframework.web.client.RestClient;
  * action can show "Ollama unreachable" instead of failing with a 500.
  *
  * <p>Wired as an explicit {@code @Bean} by {@link AiLlmAutoConfiguration}, not a component-scanned
- * {@code @Service} — same reasoning as {@link OllamaLlmClient}.
+ * {@code @Service} — same reasoning as {@link OllamaLlmClient}. Public (slice 4): the {@code admin}
+ * module's health-check endpoint injects this bean directly — no port abstraction yet, since Ollama
+ * is still the only provider; a second provider would revisit this the same way {@link LlmClient}
+ * was ported from the start.
  */
-class OllamaHealthCheckService {
+public class OllamaHealthCheckService {
 
   private static final String LATEST_SUFFIX = ":latest";
 
@@ -46,7 +49,7 @@ class OllamaHealthCheckService {
    *     with a human explanation otherwise (unreachable, timeout, or model not installed) — never
    *     throws
    */
-  AiHealthCheckResult check(String model) {
+  public AiHealthCheckResult check(String model) {
     OllamaTagsResponse response;
     try {
       response = restClient.get().uri("/api/tags").retrieve().body(OllamaTagsResponse.class);

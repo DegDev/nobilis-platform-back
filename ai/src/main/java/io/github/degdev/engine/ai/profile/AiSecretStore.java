@@ -65,4 +65,16 @@ public class AiSecretStore {
   public Optional<String> read(String ref) {
     return repository.findById(ref).map(secret -> cryptoService.decrypt(secret.getValue()));
   }
+
+  /**
+   * Whether a secret is stored under this ref, WITHOUT decrypting it — the admin read path's
+   * masking check (a UI shows "set"/"unset" per secret field, never the plaintext or ciphertext).
+   *
+   * @param ref the composite {@code "<purpose>.<providerCode>.<fieldKey>"} key
+   * @return {@code true} if a secret is stored under this ref
+   */
+  @Transactional(readOnly = true)
+  public boolean isSet(String ref) {
+    return repository.existsById(ref);
+  }
 }
