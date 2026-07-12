@@ -35,6 +35,34 @@ mvn verify                          # build all modules
 JDK is pinned per-project via SDKMAN (`.sdkmanrc`, Java 25). Run `sdk env` in the
 repo root if auto-switching is not enabled.
 
+## Multi-agent (Codex)
+
+This repo is built with Claude Code, but the same instructions can drive OpenAI
+Codex CLI for A/B runs. Codex reads `CLAUDE.md` as its instruction file via the
+`project_doc_fallback_filenames` fallback (no `AGENTS.md` needed — one SSOT).
+The mapping of the full harness onto Codex is in
+[`docs/process/codex-harness-parity.md`](docs/process/codex-harness-parity.md).
+
+Global Codex config lives at `~/.codex/config.toml`:
+
+```toml
+model = "gpt-5.6-sol"
+model_reasoning_effort = "medium"
+project_doc_fallback_filenames = ["CLAUDE.md"]
+
+[projects."/path/to/www/nobilis-platform-front"]
+trust_level = "trusted"
+
+[projects."/path/to/www/nobilis-platform-back"]
+trust_level = "trusted"
+
+[mcp_servers.context7]
+url = "https://mcp.context7.com/mcp"
+
+[mcp_servers.jetbrains]
+url = "http://127.0.0.1:64342/stream"
+```
+
 ## License
 
 Apache-2.0 © 2026 Dmitri Puscas ([@DegDev](https://github.com/DegDev))
