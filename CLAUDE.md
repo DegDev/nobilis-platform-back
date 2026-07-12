@@ -147,10 +147,13 @@ How the agent works on every task — independent of the prompt's wording.
 
 ## Commit gate
 
-The agent does **not** commit on its own. Finishing a task = **STOP + a short report** (files
-touched, result, what was verified) **+ a proposed commit message**. The user reviews and commits.
-This holds even when a specific prompt doesn't restate it; build/docs/fix prompts that repeat a
-"commit gate" line are only echoing this rule.
+The agent does **not** commit on its own. Finishing a task = **STOP + a short report** — files
+touched; judgement (what was done and why, what surprised you, any GATE-0 discrepancy left
+unresolved — this is the report's value, not padding); and, for any check actually run, its
+exact command **+ the raw outcome line** (a real test-count line, not a summarized "all green"
+— a check you didn't run is reported as not run, never asserted) **+ a proposed commit
+message**. The user reviews and commits. This holds even when a specific prompt doesn't restate
+it; build/docs/fix prompts that repeat a "commit gate" line are only echoing this rule.
 
 **Proposed-message format (always, no prompt needed):** subject line — imperative,
 `type(scope): …`, ≤72 chars, no trailing period → one blank line → body. **The body is BULLETS
@@ -169,7 +172,7 @@ The run-through before finishing any task (sections above hold the detail; this 
 - [ ] No hardcoded secrets (the gitleaks pre-commit hook also gates this).
 - [ ] Correct branch — `git branch --show-current` matches the milestone/task.
 - [ ] sources-log updated for any non-trivial decision.
-- [ ] STOP + short report (files touched, result, what was verified) + proposed commit message.
+- [ ] STOP + short report (files touched, judgement/findings, raw outcome line for any check actually run — nothing asserted unrun) + proposed commit message.
 
 ## Branch discipline (CRITICAL, enforced)
 
