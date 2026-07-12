@@ -1,1 +1,2 @@
 io.github.degdev.engine.ai.persistence.AiPersistenceAutoConfiguration
+io.github.degdev.engine.ai.persistence.AiServiceAutoConfiguration

@@ -22,6 +22,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * The admin-saved binding of a purpose to the one provider that serves it: "when {@code purpose}
@@ -33,6 +34,10 @@ import lombok.NoArgsConstructor;
  * <p>{@code category} is carried over from the pattern source's resolved-profile shape; this slice
  * only creates the column — its exact semantics are pinned down when {@code AiProfileService} lands
  * in the next slice, so it stays a nullable, otherwise-unused string for now.
+ *
+ * <p>{@code providerCode} carries {@code @Setter}, unlike the immutable {@code purpose} business
+ * key: {@code AiProfileService#save} upserts an existing profile in place (switching providers for
+ * a purpose is a normal re-save, not a delete/recreate).
  */
 @Getter
 @Entity
@@ -46,6 +51,7 @@ public class AiProfile extends BaseEntity {
   @Column(name = "category", length = 64)
   private String category;
 
+  @Setter
   @Column(name = "provider_code", nullable = false, length = 64)
   private String providerCode;
 
