@@ -83,7 +83,7 @@ class RolesCrudIntegrationTest {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String TEST_JWT_KEY = CryptoKeyGenerator.generateBase64Key();
-  private static final String BASE = "/admin/api/roles";
+  private static final String BASE = "/api/admin/roles";
 
   @Autowired private WebApplicationContext context;
   @Autowired private JwtAuthenticationFilter gateFilter;

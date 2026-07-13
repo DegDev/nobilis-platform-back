@@ -25,12 +25,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * admin API paths so every handler's {@link RequiresPermission} declaration is enforced. The login
  * endpoint and static/error paths are not API handlers and must not be gated here (they are handled
  * by the servlet-layer contour).
- *
- * <p><b>Two patterns during the {@code @NobilisAdminController} migration.</b> Controllers are
- * migrating one at a time from the legacy hardcoded {@code /admin/api/**} to {@code
- * ${nobilis.api.v1.url:/api}/admin/**}. Both patterns are registered until every controller has
- * moved, so an already-migrated controller and a not-yet-migrated one are covered at once; remove
- * the legacy pattern once none remain.
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -45,6 +39,6 @@ public class WebConfig implements WebMvcConfigurer {
   public void addInterceptors(InterceptorRegistry registry) {
     registry
         .addInterceptor(new RequiresPermissionInterceptor())
-        .addPathPatterns("/admin/api/**", apiUrl + "/admin/**");
+        .addPathPatterns(apiUrl + "/admin/**");
   }
 }

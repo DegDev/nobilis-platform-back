@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.admin.cms;
 
+import io.github.degdev.engine.admin.api.NobilisAdminController;
 import io.github.degdev.engine.admin.api.RequiresPermission;
 import io.github.degdev.engine.auth.role.EnginePermissions;
 import io.github.degdev.engine.common.cms.ContentBlockNotFoundException;
@@ -31,7 +32,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Content blocks CRUD — the admin management surface on top of {@link ContentBlockService},
@@ -53,9 +53,8 @@ import org.springframework.web.bind.annotation.RestController;
  * ContentBlockService} existing — i.e. only when the database is active. The stateless default host
  * mounts no content-block endpoints.
  */
-@RestController
-@RequestMapping("/admin/api/content-blocks")
-@RequiresPermission(EnginePermissions.CONTENT_MANAGE)
+@NobilisAdminController(permission = EnginePermissions.CONTENT_MANAGE)
+@RequestMapping("${nobilis.api.v1.url:/api}/admin/content-blocks")
 public class ContentBlockController {
 
   private final ContentBlockService contentBlockService;

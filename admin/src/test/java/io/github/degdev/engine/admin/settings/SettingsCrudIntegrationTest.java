@@ -79,7 +79,7 @@ class SettingsCrudIntegrationTest {
 
   private static final String TEST_MASTER_KEY = CryptoKeyGenerator.generateBase64Key();
   private static final String TEST_JWT_KEY = CryptoKeyGenerator.generateBase64Key();
-  private static final String BASE = "/admin/api/settings";
+  private static final String BASE = "/api/admin/settings";
 
   @Autowired private WebApplicationContext context;
   @Autowired private JwtAuthenticationFilter gateFilter;

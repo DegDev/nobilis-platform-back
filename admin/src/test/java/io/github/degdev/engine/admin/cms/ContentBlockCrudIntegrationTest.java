@@ -70,7 +70,7 @@ class ContentBlockCrudIntegrationTest {
   static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18");
 
   private static final String TEST_JWT_KEY = CryptoKeyGenerator.generateBase64Key();
-  private static final String BASE = "/admin/api/content-blocks";
+  private static final String BASE = "/api/admin/content-blocks";
 
   @Autowired private WebApplicationContext context;
   @Autowired private JwtAuthenticationFilter gateFilter;

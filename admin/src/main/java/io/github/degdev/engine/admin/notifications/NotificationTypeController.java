@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.admin.notifications;
 
+import io.github.degdev.engine.admin.api.NobilisAdminController;
 import io.github.degdev.engine.admin.api.NotFoundException;
 import io.github.degdev.engine.admin.api.RequiresPermission;
 import io.github.degdev.engine.auth.role.EnginePermissions;
@@ -32,7 +33,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Notification types CRUD — follows the {@code SettingsController}/{@code ContentBlockController}
@@ -42,9 +42,8 @@ import org.springframework.web.bind.annotation.RestController;
  * <p>Mounted only with a store: excluded from component scan, registered as a conditional
  * {@code @Bean} by {@link NotificationsWebAutoConfiguration}.
  */
-@RestController
-@RequestMapping("/admin/api/notification-types")
-@RequiresPermission(EnginePermissions.NOTIFICATIONS_MANAGE)
+@NobilisAdminController(permission = EnginePermissions.NOTIFICATIONS_MANAGE)
+@RequestMapping("${nobilis.api.v1.url:/api}/admin/notification-types")
 public class NotificationTypeController {
 
   private final NotificationsService notificationsService;
