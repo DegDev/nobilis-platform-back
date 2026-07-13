@@ -9,8 +9,13 @@ set -uo pipefail
 repo="${1:-.}"
 log="${2:-/tmp/nobilis-verify.log}"
 
-# Resolve a JDK >= 21 for the Java-25 Maven build (box default is 17). Portable, no
-# hardcoded path: prefer $JAVA_HOME, then the newest sdkman candidate, then PATH.
+# Resolve a JDK >= 25 for the Java-25 Maven build (box default is 17). Portable, no
+# hardcoded path: prefer $JAVA_HOME, then the newest sdkman candidate, then PATH. Maven's own
+# host JVM is fixed by JAVA_HOME/PATH before Maven reads any of its own config (toolchains,
+# jvm.config, maven.config), so this is the only place that can actually gate the build --
+# checkstyle runs in-process (not toolchain-aware) and fails to even load its classes below
+# JDK 21, while the release-25 compile needs a real 25 javac. Fails loudly (non-zero, stderr
+# message) rather than silently falling through to a bare `mvn` on an inadequate JVM.
 find_jdk() {
   local c v
   for c in "${JAVA_HOME:+$JAVA_HOME/bin/java}" \
@@ -19,8 +24,9 @@ find_jdk() {
     [ -n "$c" ] && [ -x "$c" ] || continue
     v="$("$c" -version 2>&1 | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')"
     case "$v" in ''|*[!0-9]*) continue ;; esac
-    [ "$v" -ge 21 ] && { printf '%s\n' "$c"; return 0; }
+    [ "$v" -ge 25 ] && { printf '%s\n' "$c"; return 0; }
   done
+  printf 'verify.sh: JDK 25+ required for this build, none found -- install one (e.g. `sdk install java 25-tem`) or check .sdkmanrc\n' >&2
   return 1
 }
 
@@ -53,8 +59,8 @@ find_node() {
 }
 
 if [ -f "$repo/pom.xml" ]; then
-  jdk="$(find_jdk || true)"; jh=""
-  [ -n "$jdk" ] && jh="$(dirname "$(dirname "$jdk")")"
+  jdk="$(find_jdk)" || exit 1
+  jh="$(dirname "$(dirname "$jdk")")"
   # Force UTF-8 regardless of the caller's locale (e.g. POSIX/C with LANG unset):
   # a locale-driven JVM file.encoding of ANSI_X3.4-1968 degrades Cyrillic/Romanian
   # test assertions to "?" and false-reds tests that are otherwise correct.
