@@ -56,3 +56,4 @@ self-report. See the ritual in [prompting-methodology.md](./prompting-methodolog
 | 06 | s6 async        | BUILD | Y | clean           | verify     | 10 tests green first pass, bus terminal/retriable correct |
 | polish | pool-config  | FIX   | N | clean           | hikari-log | infra defaults moved base←local; verified maximumPoolSize=10 live |
 | polish | logging L1   | BUILD | N | clean           | verify     | logback per-runnable files + configurable levels, green first pass |
+| polish | meta-annotation p1 | BUILD | Y | clean | curl | @NobilisAdminController folds @RestController+@RequiresPermission (via @AliasFor); @RequestMapping stays per-controller with ${nobilis.api.v1.url:/api} (AliasFor can't concat base+segment); proven on AccountController, path /api/admin/accounts live 200, old 404; 18 admin tests green |
