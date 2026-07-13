@@ -39,10 +39,11 @@ import org.springframework.util.StringUtils;
  *
  * <p>A token is {@code base64url(header) + "." + base64url(payload) + "." + base64url(signature)}.
  * The header is fixed ({@code {"alg":"HS256","typ":"JWT"}}); the payload carries {@code sub},
- * {@code roles}, {@code iat}, and {@code exp}. Validation recomputes the signature and compares it
- * in constant time ({@link MessageDigest#isEqual}), then rejects an expired {@code exp}. The
- * signing key is a Base64-encoded secret of at least 256 bits; a missing or too-short key fails
- * fast at construction so a misconfigured deployment never issues unsignable tokens.
+ * {@code roles}, {@code realms}, {@code permissions}, {@code iat}, {@code exp}, and {@code
+ * loginAt}. Validation recomputes the signature and compares it in constant time ({@link
+ * MessageDigest#isEqual}), then rejects an expired {@code exp}. The signing key is a Base64-encoded
+ * secret of at least 256 bits; a missing or too-short key fails fast at construction so a
+ * misconfigured deployment never issues unsignable tokens.
  */
 public final class JwtService {
 
@@ -105,7 +106,9 @@ public final class JwtService {
   /**
    * Issues a "thick" signed token, valid from now until {@code now + ttl}, embedding the realms and
    * effective permissions alongside the subject and roles so a gate can authorize without a
-   * database round-trip.
+   * database round-trip. The {@code loginAt} claim is set to now — use this overload only for a
+   * real, credential-verified login; a silent re-mint must call {@link #issue(String, List, List,
+   * List, Instant)} instead so it carries the original login instant forward unchanged.
    *
    * @param subject the identity the token is about (the {@code sub} claim)
    * @param roles role codes to embed (the {@code roles} claim); may be empty, never {@code null}
@@ -117,6 +120,30 @@ public final class JwtService {
   public String issue(
       String subject, List<String> roles, List<String> realms, List<String> permissions) {
     Instant now = clock.instant();
+    return issue(subject, roles, realms, permissions, now);
+  }
+
+  /**
+   * Issues a "thick" signed token, valid from now until {@code now + ttl}, with an explicit {@code
+   * loginAt} claim. This is the primitive a silent token re-mint uses: it carries the {@code
+   * loginAt} of the token being re-minted forward UNCHANGED, so a caller cannot extend their
+   * effective session past the staleness cap by chaining re-mints.
+   *
+   * @param subject the identity the token is about (the {@code sub} claim)
+   * @param roles role codes to embed (the {@code roles} claim); may be empty, never {@code null}
+   * @param realms realm names to embed (the {@code realms} claim); may be empty, never {@code null}
+   * @param permissions permission strings to embed (the {@code permissions} claim); may be empty,
+   *     never {@code null}
+   * @param loginAt the {@code loginAt} claim to embed — the original real-login instant
+   * @return the compact {@code header.payload.signature} token
+   */
+  public String issue(
+      String subject,
+      List<String> roles,
+      List<String> realms,
+      List<String> permissions,
+      Instant loginAt) {
+    Instant now = clock.instant();
     Instant expiry = now.plus(ttl);
 
     Map<String, Object> claims = new LinkedHashMap<>();
@@ -126,6 +153,7 @@ public final class JwtService {
     claims.put("permissions", permissions);
     claims.put("iat", now.getEpochSecond());
     claims.put("exp", expiry.getEpochSecond());
+    claims.put("loginAt", loginAt.getEpochSecond());
 
     String headerSegment = base64Url(HEADER_JSON.getBytes(StandardCharsets.UTF_8));
     String payloadSegment = base64Url(toJson(claims).getBytes(StandardCharsets.UTF_8));
@@ -143,6 +171,37 @@ public final class JwtService {
    *     expired
    */
   public AuthClaims validate(String token) {
+    JsonNode payload = verifyAndParse(token);
+    long exp = payload.path("exp").asLong();
+    if (clock.instant().getEpochSecond() >= exp) {
+      throw new JwtException("token has expired");
+    }
+    return toClaims(payload, exp);
+  }
+
+  /**
+   * Verifies a token's signature and returns its claims, tolerating an expiry up to {@code grace}
+   * in the past. This exists ONLY for the token re-mint endpoint's reactive case (a request that
+   * raced an expiring token and got a 401) — no other caller should use it. Everywhere else, an
+   * expired token must be rejected outright by {@link #validate(String)}.
+   *
+   * @param token a compact token previously issued by one of the {@code issue} overloads
+   * @param grace how far past {@code exp} the token is still accepted
+   * @return the verified claims
+   * @throws JwtException if the token is malformed, its signature does not verify, or it expired
+   *     more than {@code grace} ago
+   */
+  public AuthClaims validateForRemint(String token, Duration grace) {
+    JsonNode payload = verifyAndParse(token);
+    long exp = payload.path("exp").asLong();
+    long graceDeadline = exp + grace.toSeconds();
+    if (clock.instant().getEpochSecond() >= graceDeadline) {
+      throw new JwtException("token has expired beyond the remint grace window");
+    }
+    return toClaims(payload, exp);
+  }
+
+  private JsonNode verifyAndParse(String token) {
     if (token == null) {
       throw new JwtException("token must not be null");
     }
@@ -161,19 +220,20 @@ public final class JwtService {
     if (!MessageDigest.isEqual(expected, actual)) {
       throw new JwtException("token signature did not verify");
     }
+    return parsePayload(parts[1]);
+  }
 
-    JsonNode payload = parsePayload(parts[1]);
-    long exp = payload.path("exp").asLong();
-    if (clock.instant().getEpochSecond() >= exp) {
-      throw new JwtException("token has expired");
-    }
+  private static AuthClaims toClaims(JsonNode payload, long exp) {
+    long iat = payload.path("iat").asLong();
+    long loginAt = payload.hasNonNull("loginAt") ? payload.path("loginAt").asLong() : iat;
     return new AuthClaims(
         payload.path("sub").asText(null),
         readStringList(payload, "roles"),
         readStringList(payload, "realms"),
         readStringList(payload, "permissions"),
-        Instant.ofEpochSecond(payload.path("iat").asLong()),
-        Instant.ofEpochSecond(exp));
+        Instant.ofEpochSecond(iat),
+        Instant.ofEpochSecond(exp),
+        Instant.ofEpochSecond(loginAt));
   }
 
   private JsonNode parsePayload(String payloadSegment) {
