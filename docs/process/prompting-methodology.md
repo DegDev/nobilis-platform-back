@@ -72,6 +72,21 @@ Long sessions degrade as the window fills; keep it clean deliberately. Agent-neu
 
 ---
 
+## Stuck protocol — STOP, don't loop silently
+
+**≥3 failed cycles on one step** (a build keeps failing, a test won't go green, a tool stays
+silent) → STOP + report: what's stuck, what was tried. Don't keep looping quietly hoping the next
+attempt lands — a silent loop burns budget and hides the failure from the person who could reframe
+it.
+
+**Escalation after a repeated manual fix.** If the operator has fixed the same spot twice in this
+chat and it's still not right, suggest `/clear` plus a sharper restatement of the ask — don't
+attempt a third fix in what is now a poisoned context (prior wrong attempts keep biasing the next
+one). A fresh context with the lesson folded into the restated ask beats a third patch on top of
+two failed ones.
+
+---
+
 ## Type 1 — RECON (read-only investigation)
 
 **When:** before implementing, diagnosing a bug, designing, or any change to unfamiliar territory.
@@ -395,6 +410,13 @@ A recurring root cause: a green `build`/`test` does not prove a deployed process
 
 **The prod config mechanism is a GATE-0 evidence class.** Before any config- or dependency-edit, establish how prod *actually* loads configuration and resolves dependencies: an external per-process file in the build directory ≠ a bundled repo profile shipped in the artifact ≠ a local dev config; runtime scope ≠ test scope. Confirm the mechanism by *reading the deployment* (the process manager, the directory layout, the dependency tree with scopes) — do not infer it from a gitignore, from local behavior, or from green tests. If an override lives outside version control, the provenance says so in plain text (the repo does not enforce it; deployment owns applying it). An unconfirmed mechanism → STOP, do not guess. (Illustration: a bundled config file left untracked → make the annotation default fail-safe, or a clean checkout boots on the framework's default port.)
 
+**Confirm the deployment mechanism by measuring the live artifact, not local build tooling.** A
+local build script (a Makefile, a local dev command) can target a different environment than what
+CI/CD actually ships — determine how a subsystem is actually deployed by reading its CI/CD
+pipeline configuration *and* measuring the deployed artifact directly (fetching the live
+served files/response from the actual domain/environment), not by inspecting what a local build
+produces. "Checked what I built" is not "checked what's running."
+
 **A live process start is a DoD item** for any change touching classpath, dependencies, datasource, port, launch config, or a cross-process contract (including the front↔back address). The DoD requires an *actual* process start and a request passing through — not only `build`/`test`. Test scope suffices for tests, not for runtime; a green CI does not prove the process starts and listens on the right port. Verify on the live process (a startup log + a real request/response code); where scriptable, a smoke-boot in CI or the Stop-hook. (The start is initiated by the process owner — see the instructions file.)
 
 ---
@@ -422,7 +444,7 @@ This governs the prompt *author* (before the prompt is written), not the agent's
 - a *reference exemplar* pointing at a concrete class / entity / file — a model implementation (where to look), not a universal rule; the class name is the value of the reference and is NOT anonymized;
 - a *structural pointer* (a path / a subsystem's canonical doc / a sibling repo's paired playbook) or an index's repo self-identification ("Playbooks (&lt;repo&gt;)") — an address, not a norm.
 
-**A ticket key (`ABC-123`) is not in the rule body:** tracing lives in commit messages and the provenance log, not in a portable rule.
+**A ticket key (`ABC-123`) is not in the rule body:** tracing lives in commit messages and the provenance log, not in a portable rule. Inside an already-marked illustration/precedent (the bullet above), a ticket key is permitted on the same basis as other project specifics — it reads as an example, not as a norm; this is not an exception to the rule, just the marked-illustration allowance applied consistently.
 
 **Canonical subsystem docs are exempt:** there, project specifics (entities, endpoints, stands) are the *subject* of the doc, not a violation — this rule is for the portable layer only. Future `.md` in this layer follows agnosticism strictly (a review-gate: a person's name or a project-literal-as-norm in a portable rule body = a blocker).
 
@@ -473,6 +495,12 @@ The default Definition-of-Done acceptance for a UI change is **unit + slice-leve
 Where a direct-filesystem tool is available to the assistant (outside the coding agent's own prompt flow), it may edit **only markdown documentation (`.md`) directly.** Everything else — application code, tooling scripts, build-and-lint config, CI workflow files, hook scripts, package-manager config — always goes through the coding agent's own BUILD/FIX prompt flow, never a direct edit, regardless of whether the direct-access tool is technically capable of it. A tool's capability is not authorization.
 
 This narrows an earlier version of this rule, which additionally permitted tooling scripts and build-and-lint config directly. That version was tried and reverted: a project with two authorized paths for changing the same codebase (a direct-access tool AND a coding agent) risks silent divergence between what each path assumes about the other's state, inconsistent provenance, and a real incident where an uncommitted direct edit (created outside the coding agent's tracked flow) was invisible to a coding-agent session working from a different checkout of the same repo. One authority — the coding agent — for everything except `.md` removes the seam entirely.
+
+**This restricts editing, not reading.** Pointed reading of a non-`.md` file to verify a narrow
+fact inside an already-running conversation (confirming a signature, a config value, a current
+state) is fine and does not require routing through the coding agent — it is not a substitute for
+a RECON pass on a substantial/HEAVY investigation, but a quick fact-check read is not "editing"
+and this boundary does not forbid it.
 
 ---
 
