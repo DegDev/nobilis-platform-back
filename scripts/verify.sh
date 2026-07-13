@@ -55,6 +55,11 @@ find_node() {
 if [ -f "$repo/pom.xml" ]; then
   jdk="$(find_jdk || true)"; jh=""
   [ -n "$jdk" ] && jh="$(dirname "$(dirname "$jdk")")"
+  # Force UTF-8 regardless of the caller's locale (e.g. POSIX/C with LANG unset):
+  # a locale-driven JVM file.encoding of ANSI_X3.4-1968 degrades Cyrillic/Romanian
+  # test assertions to "?" and false-reds tests that are otherwise correct.
+  export LANG="${LANG:-C.UTF-8}" LC_ALL="${LC_ALL:-C.UTF-8}"
+  export MAVEN_OPTS="${MAVEN_OPTS:-} -Dfile.encoding=UTF-8 -Dsun.jnu.encoding=UTF-8"
   run_mvn() { ( cd "$repo" && { [ -n "$jh" ] && export JAVA_HOME="$jh"; mvn -B "$@"; } ); }
   # Retry-once-on-red: a stale target/ (e.g. an annotation-processor-generated
   # .imports entry surviving a rename/delete under incremental compilation) can
