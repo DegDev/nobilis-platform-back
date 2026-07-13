@@ -18,12 +18,10 @@ nobilis.crypto.master-key=${NOBILIS_CRYPTO_MASTER_KEY:<base64-256bit-key>}
 # --- Turn the database ON for local dev -----------------------------------------------------------
 # The base application.properties excludes the DataSource/JPA/Flyway auto-configurations (stateless
 # default). Reset the list to EMPTY here to un-exclude them, then point at a dedicated dev Postgres
-# (never reuse another app's DB). Flyway applies the engine migrations (V1 setting, V2/V3 identity)
-# and ddl-auto=validate proves entity↔migration parity.
+# (never reuse another app's DB). Flyway applies the engine migrations (V1 setting, V2/V3 identity).
+# ddl-auto/open-in-view/pool-size are deployment-invariant infra defaults — set in the BASE
+# application.properties, not here; only the machine-local URL/credentials belong in this file.
 spring.autoconfigure.exclude=
 spring.datasource.url=${NOBILIS_DB_URL:jdbc:postgresql://localhost:5433/nobilis}
 spring.datasource.username=${NOBILIS_DB_USERNAME:nobilis}
 spring.datasource.password=${NOBILIS_DB_PASSWORD:<db-password>}
-spring.jpa.hibernate.ddl-auto=validate
-spring.jpa.open-in-view=false
-spring.datasource.hikari.maximum-pool-size=10
