@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.admin.api;
 
+import io.github.degdev.engine.ai.profile.AiProfileException;
 import io.github.degdev.engine.auth.account.UnknownRealmException;
 import io.github.degdev.engine.auth.account.UnknownRoleException;
 import io.github.degdev.engine.auth.role.RoleConflictException;
@@ -218,6 +219,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(NotificationTypeNotFoundException.class)
   public ProblemDetail handleNotificationTypeNotFound(NotificationTypeNotFoundException ex) {
     return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, message(ex));
+  }
+
+  /**
+   * Maps an AI-profile catalog-validation failure (unknown provider/field, out-of-bounds number, a
+   * secret field submitted as a plain param, no default provider configured, secrets submitted with
+   * no secret store configured) to {@code 400}. Single handler for the reusable {@link
+   * AiProfileException}, mirroring {@link UnknownPermissionException}'s one-type shape.
+   *
+   * @param ex the AI-profile validation signal
+   * @return a {@code 400} problem detail carrying the localized message
+   */
+  @ExceptionHandler(AiProfileException.class)
+  public ProblemDetail handleAiProfileException(AiProfileException ex) {
+    return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, message(ex));
   }
 
   /**

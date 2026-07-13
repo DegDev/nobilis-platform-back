@@ -239,7 +239,8 @@ class RolesCrudIntegrationTest {
                     "ACCOUNT_MANAGE",
                     "SETTINGS_MANAGE",
                     "CONTENT_MANAGE",
-                    "NOTIFICATIONS_MANAGE")));
+                    "NOTIFICATIONS_MANAGE",
+                    "AI_MANAGE")));
   }
 
   @Test

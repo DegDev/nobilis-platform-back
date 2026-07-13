@@ -41,13 +41,16 @@ public final class EnginePermissions {
   /** Manage notification types, templates, and their translations (config only, no dispatch). */
   public static final String NOTIFICATIONS_MANAGE = "NOTIFICATIONS_MANAGE";
 
+  /** Manage AI-profile catalog/config (provider selection, params, secrets, health-check). */
+  public static final String AI_MANAGE = "AI_MANAGE";
+
   /**
    * Every engine permission, as a single source of truth. Grow this alongside the constants above
    * so a "grant everything" caller (e.g. the config-admin) never drifts out of sync with the
    * catalog.
    */
   public static final Set<String> ALL =
-      Set.of(SETTINGS_MANAGE, ACCOUNT_MANAGE, CONTENT_MANAGE, NOTIFICATIONS_MANAGE);
+      Set.of(SETTINGS_MANAGE, ACCOUNT_MANAGE, CONTENT_MANAGE, NOTIFICATIONS_MANAGE, AI_MANAGE);
 
   private EnginePermissions() {}
 }

@@ -21,5 +21,57 @@
       <groupId>io.github.degdev</groupId>
       <artifactId>common</artifactId>
     </dependency>
+
+    <!-- Lombok: compile-time boilerplate (getters, constructors). Provided scope. -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+    </dependency>
+
+    <!--
+      RestClient (slice 3) for OllamaLlmClient/health-check's native /api/chat and /api/tags calls.
+      Plain spring-web, NOT spring-boot-starter-web — ai is a library with no embedded server, same
+      reasoning as integration/pom.xml's Telegram/SMS transports.
+    -->
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-web</artifactId>
+    </dependency>
+
+    <!--
+      Jackson 3 (de)serialization for the Ollama request/response wire records — RestClient's
+      default message converters pick it up from the classpath. Mirrors integration/pom.xml's
+      reasoning: plain spring-boot-starter alone does not bring a JSON mapper.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-json</artifactId>
+    </dependency>
+
+    <!--
+      Testcontainers Postgres for the AI-profile persistence slice (Flyway + JPA against a real DB).
+      JPA/Flyway/driver come transitively (compile) from common; these test-scoped artifacts do not,
+      so they are declared here, mirroring auth/pom.xml.
+    -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-testcontainers</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers-postgresql</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>
