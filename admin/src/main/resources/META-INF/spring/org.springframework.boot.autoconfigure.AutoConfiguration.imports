@@ -3,3 +3,4 @@ io.github.degdev.engine.admin.roles.RoleAdminAutoConfiguration
 io.github.degdev.engine.admin.accounts.AccountAdminAutoConfiguration
 io.github.degdev.engine.admin.cms.ContentBlockWebAutoConfiguration
 io.github.degdev.engine.admin.notifications.NotificationsWebAutoConfiguration
+io.github.degdev.engine.admin.ai.AiAdminAutoConfiguration

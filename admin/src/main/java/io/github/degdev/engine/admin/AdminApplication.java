@@ -16,6 +16,7 @@
 package io.github.degdev.engine.admin;
 
 import io.github.degdev.engine.admin.accounts.AccountController;
+import io.github.degdev.engine.admin.ai.AiProfileController;
 import io.github.degdev.engine.admin.cms.ContentBlockController;
 import io.github.degdev.engine.admin.notifications.NotificationTemplateController;
 import io.github.degdev.engine.admin.notifications.NotificationTypeController;
@@ -47,10 +48,10 @@ import org.springframework.context.annotation.FilterType;
  * {@code @EnableAutoConfiguration} + {@code @ComponentScan} with Boot's two standard exclude
  * filters) for one reason: the extra exclude filter keeps the DB-only screens ({@link
  * SettingsController}, {@link RoleController}, {@link AccountController}, {@link
- * ContentBlockController}) OUT of the component scan. Each is registered as a {@code @Bean} by its
- * web auto-configuration only when its store exists — so scanning them here would both mount them
- * in the stateless host (where they have no service to inject, failing the boot) and clash with the
- * conditional bean. Everything else scans as usual.
+ * ContentBlockController}, {@link AiProfileController}) OUT of the component scan. Each is
+ * registered as a {@code @Bean} by its web auto-configuration only when its store exists — so
+ * scanning them here would both mount them in the stateless host (where they have no service to
+ * inject, failing the boot) and clash with the conditional bean. Everything else scans as usual.
  */
 @SpringBootConfiguration
 @EnableAutoConfiguration
@@ -66,7 +67,8 @@ import org.springframework.context.annotation.FilterType;
             AccountController.class,
             ContentBlockController.class,
             NotificationTypeController.class,
-            NotificationTemplateController.class
+            NotificationTemplateController.class,
+            AiProfileController.class
           })
     })
 public class AdminApplication {
