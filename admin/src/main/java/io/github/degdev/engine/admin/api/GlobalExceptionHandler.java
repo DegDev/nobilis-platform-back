@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -39,8 +40,11 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.annotation.ResponseStatusExceptionResolver;
+import org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
@@ -236,14 +240,31 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   }
 
   /**
-   * Last-resort handler: turns any otherwise-unhandled exception into a {@code 500} without leaking
-   * the cause. The stack trace is logged server-side.
+   * Last-resort handler for anything with no specific {@code @ExceptionHandler} above. Before
+   * defaulting to a generic {@code 500}, it honors a class-level {@link ResponseStatus} annotation
+   * if the exception carries one — {@link ExceptionHandlerExceptionResolver} (backing the 12
+   * handlers above) runs ahead of {@link ResponseStatusExceptionResolver} in Spring's resolver
+   * chain, so once this advice exists, a bare {@code @ResponseStatus} exception with no matching
+   * handler here would otherwise always be swallowed into a 500 — exactly the repeated defect this
+   * fallback closes (two independent exceptions hit it, months apart, both caught only by manual
+   * testing). The message is {@code ex.getMessage()} verbatim, NOT the {@code messageSource}
+   * catalog: an exception reaching this branch isn't a {@link MessageKeyException}, so its message
+   * is whatever plain string its constructor set (already the deliberate, safe behavior for {@code
+   * InvalidCredentialsException} today) — a future {@code @ResponseStatus} exception that needs a
+   * localized message must implement {@link MessageKeyException} and get its own explicit handler
+   * above instead of relying on this fallback.
    *
    * @param ex the unexpected failure
-   * @return a generic {@code 500} problem detail
+   * @return the exception's own {@code @ResponseStatus} mapped to a problem detail, or a generic
+   *     {@code 500} if it has none
    */
   @ExceptionHandler(Exception.class)
   public ProblemDetail handleUnexpected(Exception ex) {
+    ResponseStatus responseStatus =
+        AnnotatedElementUtils.findMergedAnnotation(ex.getClass(), ResponseStatus.class);
+    if (responseStatus != null) {
+      return ProblemDetail.forStatusAndDetail(responseStatus.value(), ex.getMessage());
+    }
     LOG.error("Unhandled exception in admin API", ex);
     return ProblemDetail.forStatusAndDetail(
         HttpStatus.INTERNAL_SERVER_ERROR, message("error.unexpected"));

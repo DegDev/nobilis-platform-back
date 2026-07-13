@@ -1,0 +1,94 @@
+/*
+ * Copyright (c) 2026 Dmitri Puscas (DegDev)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.github.degdev.engine.admin.api;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import io.github.degdev.engine.auth.adminlogin.AdminLoginProperties;
+import io.github.degdev.engine.auth.adminlogin.AdminLoginService;
+import io.github.degdev.engine.auth.adminlogin.web.AdminLoginController;
+import io.github.degdev.engine.auth.password.PasswordHasher;
+import io.github.degdev.engine.auth.token.JwtProperties;
+import io.github.degdev.engine.auth.token.JwtService;
+import io.github.degdev.engine.common.crypto.CryptoKeyGenerator;
+import java.time.Clock;
+import java.time.Duration;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.context.support.StaticMessageSource;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+/**
+ * Drives {@link AdminLoginController} through a REAL {@link GlobalExceptionHandler} instance
+ * registered as controller advice — unlike {@code AdminLoginControllerTest}'s bare {@code
+ * standaloneSetup(controller)} (no advice), which cannot catch a regression here: without the
+ * advice, Spring's default {@code ResponseStatusExceptionResolver} honors {@code
+ * InvalidCredentialsException}'s {@code @ResponseStatus} correctly regardless of any bug in the
+ * advice's catch-all, so a bare-standalone test passing proves nothing about production wiring.
+ * This test previously (before the fallback in {@code handleUnexpected}) reproduced the live
+ * defect: a wrong password returned {@code 500} instead of {@code 401}, because {@code
+ * ExceptionHandlerExceptionResolver} — backing the advice's
+ * {@code @ExceptionHandler(Exception.class)} catch-all — runs ahead of {@code
+ * ResponseStatusExceptionResolver} once any advice is registered, and {@code
+ * InvalidCredentialsException} had no specific handler.
+ */
+class GlobalExceptionHandlerTest {
+
+  private static final String EMAIL = "admin@example.org";
+  private static final String RAW_PASSWORD = "s3cret-admin-pw";
+
+  private MockMvc mockMvc;
+
+  @BeforeEach
+  void setUp() {
+    PasswordHasher passwordHasher = new PasswordHasher();
+    JwtService jwtService =
+        new JwtService(
+            new JwtProperties(CryptoKeyGenerator.generateBase64Key(), Duration.ofMinutes(30)),
+            Clock.systemUTC());
+    AdminLoginProperties properties =
+        new AdminLoginProperties(true, EMAIL, passwordHasher.hash(RAW_PASSWORD));
+    AdminLoginController controller =
+        new AdminLoginController(new AdminLoginService(properties, passwordHasher, jwtService));
+
+    this.mockMvc =
+        MockMvcBuilders.standaloneSetup(controller)
+            .setControllerAdvice(new GlobalExceptionHandler(new StaticMessageSource()))
+            .build();
+  }
+
+  @Test
+  void wrongPasswordReturns401ProblemDetailThroughTheRealAdvice() throws Exception {
+    mockMvc
+        .perform(
+            post("/auth/admin/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body(EMAIL, "wrong-password")))
+        .andExpect(status().isUnauthorized())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+        .andExpect(jsonPath("$.status").value(401))
+        .andExpect(jsonPath("$.detail").value("Invalid email or password"));
+  }
+
+  private static String body(String email, String password) {
+    return "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}";
+  }
+}
