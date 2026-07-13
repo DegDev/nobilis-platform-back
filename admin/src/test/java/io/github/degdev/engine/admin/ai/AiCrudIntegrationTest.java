@@ -75,7 +75,7 @@ class AiCrudIntegrationTest {
 
   private static final String TEST_JWT_KEY = CryptoKeyGenerator.generateBase64Key();
   private static final String TEST_MASTER_KEY = CryptoKeyGenerator.generateBase64Key();
-  private static final String BASE = "/admin/api/ai";
+  private static final String BASE = "/api/admin/ai";
 
   @Autowired private WebApplicationContext context;
   @Autowired private ApplicationContext applicationContext;

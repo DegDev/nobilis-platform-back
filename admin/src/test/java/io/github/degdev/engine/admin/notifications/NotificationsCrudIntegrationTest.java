@@ -70,8 +70,8 @@ class NotificationsCrudIntegrationTest {
   static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18");
 
   private static final String TEST_JWT_KEY = CryptoKeyGenerator.generateBase64Key();
-  private static final String TYPES = "/admin/api/notification-types";
-  private static final String TEMPLATES = "/admin/api/notification-templates";
+  private static final String TYPES = "/api/admin/notification-types";
+  private static final String TEMPLATES = "/api/admin/notification-templates";
 
   @Autowired private WebApplicationContext context;
   @Autowired private JwtAuthenticationFilter gateFilter;

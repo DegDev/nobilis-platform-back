@@ -18,6 +18,7 @@ package io.github.degdev.engine.admin.api;
 import io.github.degdev.engine.auth.gate.AuthContextHolder;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -33,6 +34,11 @@ import org.springframework.web.servlet.HandlerInterceptor;
  * wrong-realm callers ({@code 401}/{@code 403}). So the interceptor tests only the atomic
  * permission and never re-checks the realm — no duplicated policy. A handler without {@link
  * RequiresPermission} passes through untouched.
+ *
+ * <p>Lookup uses {@link AnnotatedElementUtils#findMergedAnnotation}, not {@code
+ * Class#getAnnotation}: a controller may carry {@link RequiresPermission} indirectly, folded in
+ * through the {@code @NobilisAdminController} composed annotation via {@code @AliasFor} — plain
+ * reflection sees only directly-present annotations and would miss it.
  */
 public class RequiresPermissionInterceptor implements HandlerInterceptor {
 
@@ -42,9 +48,13 @@ public class RequiresPermissionInterceptor implements HandlerInterceptor {
     if (!(handler instanceof HandlerMethod handlerMethod)) {
       return true;
     }
-    RequiresPermission required = handlerMethod.getMethodAnnotation(RequiresPermission.class);
+    RequiresPermission required =
+        AnnotatedElementUtils.findMergedAnnotation(
+            handlerMethod.getMethod(), RequiresPermission.class);
     if (required == null) {
-      required = handlerMethod.getBeanType().getAnnotation(RequiresPermission.class);
+      required =
+          AnnotatedElementUtils.findMergedAnnotation(
+              handlerMethod.getBeanType(), RequiresPermission.class);
     }
     if (required != null && !AuthContextHolder.hasPermission(required.value())) {
       throw new ForbiddenException();

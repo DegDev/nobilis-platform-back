@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.admin.roles;
 
+import io.github.degdev.engine.admin.api.NobilisAdminController;
 import io.github.degdev.engine.admin.api.NotFoundException;
 import io.github.degdev.engine.admin.api.RequiresPermission;
 import io.github.degdev.engine.auth.role.EnginePermissions;
@@ -32,7 +33,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Roles CRUD — the second screen on the admin REST framework, following the {@code
@@ -54,9 +54,8 @@ import org.springframework.web.bind.annotation.RestController;
  * RoleService} existing — i.e. only when the database is active. The stateless default host mounts
  * no roles endpoints.
  */
-@RestController
-@RequestMapping("/admin/api/roles")
-@RequiresPermission(EnginePermissions.ACCOUNT_MANAGE)
+@NobilisAdminController(permission = EnginePermissions.ACCOUNT_MANAGE)
+@RequestMapping("${nobilis.api.v1.url:/api}/admin/roles")
 public class RoleController {
 
   private final RoleService roleService;

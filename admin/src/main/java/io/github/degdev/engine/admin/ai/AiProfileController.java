@@ -15,7 +15,7 @@
  */
 package io.github.degdev.engine.admin.ai;
 
-import io.github.degdev.engine.admin.api.RequiresPermission;
+import io.github.degdev.engine.admin.api.NobilisAdminController;
 import io.github.degdev.engine.ai.llm.AiHealthCheckResult;
 import io.github.degdev.engine.ai.llm.OllamaHealthCheckService;
 import io.github.degdev.engine.ai.profile.AiProfileException;
@@ -37,7 +37,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Thin REST layer over the AI-profile services (slice 2/3): no business logic here — every handler
@@ -63,9 +62,8 @@ import org.springframework.web.bind.annotation.RestController;
  * and instead registered as a {@code @Bean} by {@code AiAdminAutoConfiguration}, gated on {@link
  * AiProfileService} existing.
  */
-@RestController
-@RequestMapping("/admin/api/ai")
-@RequiresPermission(EnginePermissions.AI_MANAGE)
+@NobilisAdminController(permission = EnginePermissions.AI_MANAGE)
+@RequestMapping("${nobilis.api.v1.url:/api}/admin/ai")
 public class AiProfileController {
 
   private final AiProviderDefaults providerDefaults;

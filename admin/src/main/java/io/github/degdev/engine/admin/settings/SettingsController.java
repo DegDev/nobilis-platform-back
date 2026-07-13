@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.admin.settings;
 
+import io.github.degdev.engine.admin.api.NobilisAdminController;
 import io.github.degdev.engine.admin.api.NotFoundException;
 import io.github.degdev.engine.admin.api.RequiresPermission;
 import io.github.degdev.engine.auth.role.EnginePermissions;
@@ -32,7 +33,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Engine settings CRUD — the first screen built on the admin REST framework and the reference shape
@@ -56,9 +56,8 @@ import org.springframework.web.bind.annotation.RestController;
  * conditional {@code @Bean} the single registration (no ambiguous-mapping clash with a scanned
  * copy).
  */
-@RestController
-@RequestMapping("/admin/api/settings")
-@RequiresPermission(EnginePermissions.SETTINGS_MANAGE)
+@NobilisAdminController(permission = EnginePermissions.SETTINGS_MANAGE)
+@RequestMapping("${nobilis.api.v1.url:/api}/admin/settings")
 public class SettingsController {
 
   private final SettingsService settingsService;

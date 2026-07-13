@@ -87,7 +87,7 @@ class AccountsCrudIntegrationTest {
   static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18");
 
   private static final String TEST_JWT_KEY = CryptoKeyGenerator.generateBase64Key();
-  private static final String BASE = "/admin/api/accounts";
+  private static final String BASE = "/api/admin/accounts";
   // A clearly-fake sentinel — the point is to prove it never appears in a response body.
   private static final String SECRET_HASH_SENTINEL = "secret-hash-should-never-leak";
 

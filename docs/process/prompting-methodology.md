@@ -367,6 +367,26 @@ This shape applies to every proposed commit message at a commit-gate, in every p
 
 ---
 
+## Build-log ritual — record the verified outcome, not the self-report
+
+After each BUILD/FIX slice, once the outcome is established **by fact** (independent verification
+and/or a live check — not the executing agent's own "green" report), record one row in the
+project's `docs/process/build-log.md`. The row is appended and committed **atomically with the
+slice's code** — one commit = code + its outcome row, not a separate housekeeping commit later.
+
+Outcome vocabulary: `clean` / `fix-from-live` / `fix-from-verify` / `rework` / `gate-stop` /
+`superseded` — see the log's own header for definitions. A fix caught by the method's own gates
+(a live check, an independent verify) before merge is a **success** of the method, not a defect
+against it; `rework` — the executing agent's approach itself was wrong and had to be re-prompted —
+is the true miss. Fixes within a slice are their own row, not an extra planned slice: this is what
+lets the log also measure planning determinism (planned N slices shipped as N).
+
+Rationale: builds a real first-pass-yield statistic instead of relying on impression ("mostly it
+just worked"). This entry is the *only* canon for the ritual — a paired front repo's methodology
+pointer references this section, it does not restate or duplicate it.
+
+---
+
 ## Deployment requirements — a green build ≠ a running process
 
 A recurring root cause: a green `build`/`test` does not prove a deployed process starts and serves. Three linked rules; the parentheses are illustration, not the norm.

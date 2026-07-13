@@ -15,21 +15,30 @@
  */
 package io.github.degdev.engine.admin.api;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * MVC wiring for the admin REST framework. Registers {@link RequiresPermissionInterceptor} over the
- * admin API path so every handler's {@link RequiresPermission} declaration is enforced. Scoped to
- * {@code /admin/api/**} on purpose — the login endpoint and static/error paths are not API handlers
- * and must not be gated here (they are handled by the servlet-layer contour).
+ * admin API paths so every handler's {@link RequiresPermission} declaration is enforced. The login
+ * endpoint and static/error paths are not API handlers and must not be gated here (they are handled
+ * by the servlet-layer contour).
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
+  private final String apiUrl;
+
+  public WebConfig(@Value("${nobilis.api.v1.url:/api}") String apiUrl) {
+    this.apiUrl = apiUrl;
+  }
+
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
-    registry.addInterceptor(new RequiresPermissionInterceptor()).addPathPatterns("/admin/api/**");
+    registry
+        .addInterceptor(new RequiresPermissionInterceptor())
+        .addPathPatterns(apiUrl + "/admin/**");
   }
 }

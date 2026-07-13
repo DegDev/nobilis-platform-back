@@ -15,6 +15,7 @@
  */
 package io.github.degdev.engine.admin.accounts;
 
+import io.github.degdev.engine.admin.api.NobilisAdminController;
 import io.github.degdev.engine.admin.api.NotFoundException;
 import io.github.degdev.engine.admin.api.RequiresPermission;
 import io.github.degdev.engine.auth.account.AccountDto;
@@ -28,7 +29,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Accounts management — the third screen on the admin REST framework, following the {@code
@@ -47,9 +47,8 @@ import org.springframework.web.bind.annotation.RestController;
  * AccountAdminAutoConfiguration}, gated on an {@link AccountService} existing — i.e. only when the
  * database is active. The stateless default host mounts no accounts endpoints.
  */
-@RestController
-@RequestMapping("/admin/api/accounts")
-@RequiresPermission(EnginePermissions.ACCOUNT_MANAGE)
+@NobilisAdminController(permission = EnginePermissions.ACCOUNT_MANAGE)
+@RequestMapping("${nobilis.api.v1.url:/api}/admin/accounts")
 public class AccountController {
 
   private final AccountService accountService;
