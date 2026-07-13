@@ -21,6 +21,11 @@
       <groupId>io.github.degdev</groupId>
       <artifactId>common</artifactId>
     </dependency>
+    <!-- AI engine (slice 6): the async LLM prompt consume-point's profile resolve + LLM client. -->
+    <dependency>
+      <groupId>io.github.degdev</groupId>
+      <artifactId>ai</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter</artifactId>
