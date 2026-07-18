@@ -17,26 +17,40 @@ log="${2:-/tmp/nobilis-verify.log}"
 # JDK 21, while the release-25 compile needs a real 25 javac. Fails loudly (non-zero, stderr
 # message) rather than silently falling through to a bare `mvn` on an inadequate JVM.
 find_jdk() {
-  local c v
+  local c v full fallback=""
   for c in "${JAVA_HOME:+$JAVA_HOME/bin/java}" \
            $(ls -d "$HOME"/.sdkman/candidates/java/*/bin/java 2>/dev/null | sort -rV) \
            "$(command -v java 2>/dev/null || true)"; do
     [ -n "$c" ] && [ -x "$c" ] || continue
-    v="$("$c" -version 2>&1 | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')"
+    full="$("$c" -version 2>&1)"
+    v="$(printf '%s\n' "$full" | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')"
     case "$v" in ''|*[!0-9]*) continue ;; esac
-    [ "$v" -ge 25 ] && { printf '%s\n' "$c"; return 0; }
+    [ "$v" -ge 25 ] || continue
+    # Prefer Temurin (matches CI's explicit `distribution: temurin`; .sdkmanrc also pins
+    # 25-tem) -- a different JDK 25 vendor CAN behave differently on edge cases the
+    # Lombok --add-opens flags depend on, so this isn't purely cosmetic. Non-fatal: fall
+    # back to the first JDK 25+ found if no Temurin one is present, just warn loudly.
+    case "$full" in
+      *Temurin*) printf '%s\n' "$c"; return 0 ;;
+      *) [ -n "$fallback" ] || fallback="$c" ;;
+    esac
   done
+  if [ -n "$fallback" ]; then
+    printf 'verify.sh: WARNING -- no Temurin JDK 25+ found, using non-Temurin %s (CI pins Temurin explicitly; `sdk install java 25-tem` to match)\n' "$fallback" >&2
+    printf '%s\n' "$fallback"
+    return 0
+  fi
   printf 'verify.sh: JDK 25+ required for this build, none found -- install one (e.g. `sdk install java 25-tem`) or check .sdkmanrc\n' >&2
   return 1
 }
 
-# Resolve the Node the FRONT repo wants (.nvmrc-pinned; box default can be older,
-# e.g. v22 when v24.18 is required) -- portable, no hardcoded path. Preference
-# order: (1) nvm's exact matching install, (2) a PATH node already satisfying the
-# version, (3) the newest nvm-installed version that still satisfies it. Never
-# silently accepts a too-old node -- returns failure (empty stdout) if none of the
-# three satisfy, so the caller can skip instead of false-reding on a version gate.
-version_ge() { [ "$1" = "$2" ] || [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ]; }
+# Resolve the Node the FRONT repo wants (.nvmrc-pinned EXACT version; box default can
+# differ, e.g. v22 when v24.18.0 is required) -- portable, no hardcoded path. CI's
+# setup-node resolves .nvmrc to the exact version too, so an exact match here is what
+# keeps local and CI on the same runtime rather than "any newer Node passes". Preference
+# order: (1) nvm's exact matching install, (2) a PATH node that IS that exact version.
+# Never accepts a different version -- returns failure (empty stdout) so the caller can
+# skip instead of false-greening on a Node version CI wouldn't run.
 find_node() {
   local repo="$1" wanted nvmdir c v
   wanted="$(tr -d '[:space:]' < "$repo/.nvmrc" 2>/dev/null)"; wanted="${wanted#v}"
@@ -47,14 +61,8 @@ find_node() {
   c="$(command -v node 2>/dev/null || true)"
   if [ -n "$c" ]; then
     v="$("$c" -v 2>/dev/null | tr -d 'v')"
-    case "$v" in ''|*[!0-9.]*) ;; *) version_ge "$v" "$wanted" && { printf '%s\n' "$c"; return 0; } ;; esac
+    [ "$v" = "$wanted" ] && { printf '%s\n' "$c"; return 0; }
   fi
-  for c in $(ls -d "$nvmdir"/versions/node/*/bin/node 2>/dev/null | sort -rV); do
-    [ -x "$c" ] || continue
-    v="$("$c" -v 2>/dev/null | tr -d 'v')"
-    case "$v" in ''|*[!0-9.]*) continue ;; esac
-    version_ge "$v" "$wanted" && { printf '%s\n' "$c"; return 0; }
-  done
   return 1
 }
 
@@ -84,18 +92,33 @@ elif [ -f "$repo/angular.json" ]; then
     exit 0
   fi
   node_dir="$(dirname "$node_bin")"
-  # Lint mirrors CI's own `npm run lint` step (ci.yml) exactly, in the same position (after
-  # build, before tests) -- this is the step that was previously only checked in CI, never
-  # locally, and let pre-existing eslint errors reach main undetected (see 07-admin-design,
-  # PR #25 postmortem in the front repo's docs/sources-log.md).
+  # Lockfile freshness: a `postinstall` script (package.json) stamps node_modules/.verify-
+  # lockfile-marker with `cksum package-lock.json` on every `npm ci`/`npm install`. If the
+  # live lockfile's checksum no longer matches the marker, node_modules wasn't reinstalled
+  # since the last lockfile change -- warn (don't fail: re-running `npm ci` on every verify
+  # is too slow for the fast-iteration path this script serves). Content-hash, not mtime:
+  # `git checkout` rewrites package-lock.json's mtime even when its content is unchanged
+  # (confirmed identical content, refreshed mtime, across a branch switch), so an mtime
+  # comparison would false-warn on every branch switch -- a marker only moves on a real
+  # install.
+  if [ -f "$repo/package-lock.json" ] && [ -f "$repo/node_modules/.verify-lockfile-marker" ] \
+      && [ "$(cd "$repo" && cksum package-lock.json)" != "$(cat "$repo/node_modules/.verify-lockfile-marker")" ]; then
+    printf '[FRONT] WARNING: package-lock.json changed since the last npm install -- node_modules may be stale, run `npm ci`\n' >&2
+  fi
+  # Build uses PRODUCTION config (angular.json defaultConfiguration), matching CI's `npm
+  # run build` exactly -- a dev-config build skips bundle budgets and AOT strictness that
+  # only fire under production, so a dev-only local build can pass while CI's actual
+  # production build fails (see docs/sources-log.md, front-back CI parity audit).
+  # Lint/test/format:check mirror CI's own steps (ci.yml) in the same order.
   ( cd "$repo" && export PATH="$node_dir:$PATH" \
-      && node_modules/.bin/ng build common --configuration=development \
-      && node_modules/.bin/ng build admin  --configuration=development \
-      && node_modules/.bin/ng build app    --configuration=development \
+      && node_modules/.bin/ng build common --configuration=production \
+      && node_modules/.bin/ng build admin  --configuration=production \
+      && node_modules/.bin/ng build app    --configuration=production \
       && node_modules/.bin/ng lint \
       && node_modules/.bin/ng test  admin  --no-watch \
       && node_modules/.bin/ng test  app    --no-watch \
-      && node_modules/.bin/ng test  common --no-watch ) >"$log" 2>&1
+      && node_modules/.bin/ng test  common --no-watch \
+      && node_modules/.bin/prettier --check . ) >"$log" 2>&1
   exit $?
 else
   printf 'verify.sh: %s has neither pom.xml nor angular.json, nothing to verify\n' "$repo" >&2
