@@ -13,6 +13,12 @@ jobs:
   build:
     name: build & verify
     runs-on: ubuntu-latest
+    # Matches local scripts/verify.sh, which forces UTF-8 for the same reason: a
+    # locale-driven JVM file.encoding degrades Cyrillic/Romanian content and can
+    # false-red Checkstyle/tests that are otherwise correct.
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
     steps:
       - name: Checkout
         uses: actions/checkout@v7

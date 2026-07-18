@@ -35,6 +35,10 @@ mvn verify                          # build all modules
 JDK is pinned per-project via SDKMAN (`.sdkmanrc`, Java 25). Run `sdk env` in the
 repo root if auto-switching is not enabled.
 
+Committed git hooks (`.githooks/`, including the gitleaks secret-scan pre-commit gate)
+are not auto-enabled by git on clone — run `git config core.hooksPath .githooks` once
+per clone to activate them.
+
 ## Multi-agent (Codex)
 
 This repo is built with Claude Code, but the same instructions can drive OpenAI
