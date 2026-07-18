@@ -100,4 +100,11 @@ class AdminContourFilterTest {
     // 401 from the contour — proves the path is open.
     mockMvc.perform(get("/auth/admin/login")).andExpect(status().isNotFound());
   }
+
+  @Test
+  void openRemintPathBypassesContour() throws Exception {
+    // Same proof as the login path: an expired-token caller is already anonymous by the time the
+    // gate has run, so the remint endpoint must read the header itself, unprotected by the contour.
+    mockMvc.perform(get("/auth/admin/remint")).andExpect(status().isNotFound());
+  }
 }

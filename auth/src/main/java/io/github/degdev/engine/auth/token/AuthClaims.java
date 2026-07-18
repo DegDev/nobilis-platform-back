@@ -34,6 +34,9 @@ import java.util.List;
  * @param permissions the {@code permissions} claim — effective permission strings
  * @param issuedAt the {@code iat} claim as an {@link Instant}
  * @param expiresAt the {@code exp} claim as an {@link Instant}
+ * @param loginAt the {@code loginAt} claim as an {@link Instant} — the original real-login instant,
+ *     set once and carried forward unchanged across any silent token re-mint. A token issued before
+ *     this claim existed falls back to {@code issuedAt}.
  */
 public record AuthClaims(
     String subject,
@@ -41,4 +44,5 @@ public record AuthClaims(
     List<String> realms,
     List<String> permissions,
     Instant issuedAt,
-    Instant expiresAt) {}
+    Instant expiresAt,
+    Instant loginAt) {}

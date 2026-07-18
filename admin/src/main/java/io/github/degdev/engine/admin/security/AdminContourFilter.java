@@ -32,7 +32,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * never rejects; this filter turns those claims into an admission decision for the admin side.
  *
  * <ul>
- *   <li>Open paths (the login endpoint and the error dispatch) always pass through.
+ *   <li>Open paths (the login endpoint, the token re-mint endpoint, and the error dispatch) always
+ *       pass through. The re-mint endpoint is open for the same reason login is: a caller
+ *       presenting an expired token is already anonymous by the time the gate has run, so it must
+ *       read and verify the raw {@code Authorization} header itself rather than relying on bound
+ *       claims.
  *   <li>No claims bound (anonymous / missing / invalid token) on any other path &rarr; 401.
  *   <li>Claims present but without the {@link Realm#ADMIN} realm &rarr; 403.
  * </ul>
@@ -44,6 +48,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class AdminContourFilter extends OncePerRequestFilter {
 
   private static final String LOGIN_PATH = "/auth/admin/login";
+  private static final String REMINT_PATH = "/auth/admin/remint";
   private static final String ERROR_PATH = "/error";
 
   @Override
@@ -68,6 +73,6 @@ public class AdminContourFilter extends OncePerRequestFilter {
 
   private static boolean isOpen(HttpServletRequest request) {
     String path = request.getRequestURI();
-    return LOGIN_PATH.equals(path) || ERROR_PATH.equals(path);
+    return LOGIN_PATH.equals(path) || REMINT_PATH.equals(path) || ERROR_PATH.equals(path);
   }
 }
