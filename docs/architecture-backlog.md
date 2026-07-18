@@ -138,3 +138,27 @@ hand-coded approach visibly repetitive.
 
 **Scope:** `admin` module (frontend, `nobilis-platform-front`), milestone 03 territory — not backend,
 not this milestone.
+
+---
+
+## BL-005 — Production routing: admin SPA and backend must be same-origin
+
+**Status:** To align (deferred, not designed). Part of the deferred deployment/infra track
+(milestone 07 / homeservice deploy). Logged per extract-don't-predict — surfaced by a real defect,
+not designed ahead.
+
+**Idea:** the admin frontend calls the backend via relative paths (`/auth/admin/login`,
+`/auth/admin/remint`, `/api/admin/*`), which only resolve if the SPA and the API are served from
+the same origin. In dev this works because `projects/admin/proxy.conf.json` bridges the Angular
+dev-server (`:4200`) to the backend (`:8080`). In prod there is no equivalent bridge — neither repo
+contains a Dockerfile, reverse proxy, or nginx config — so nothing routes the SPA's relative
+`/auth/**` and `/api/admin/**` calls to the backend once the dev-server proxy is out of the picture.
+A deployed admin app would fail to reach the backend at all; this is not specific to the
+401-refresh feature, it breaks the entire admin API surface in prod (surfaced during the
+silent-token-refresh feature, 2026-07, via the remint 401 symptom, but the root gap is broader).
+When prod routing is designed, same-origin serving of the admin SPA + backend is required (a
+reverse proxy in front of both, or the backend serving the built SPA as static assets under the
+same origin) — the exact mechanism is a deployment-track decision, not designed here.
+
+**Scope:** deployment/infra, spans both repos (frontend relative-path assumption + backend/prod
+serving topology) — not a code change in any current milestone.
