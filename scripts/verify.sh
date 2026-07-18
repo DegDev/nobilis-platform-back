@@ -84,10 +84,15 @@ elif [ -f "$repo/angular.json" ]; then
     exit 0
   fi
   node_dir="$(dirname "$node_bin")"
+  # Lint mirrors CI's own `npm run lint` step (ci.yml) exactly, in the same position (after
+  # build, before tests) -- this is the step that was previously only checked in CI, never
+  # locally, and let pre-existing eslint errors reach main undetected (see 07-admin-design,
+  # PR #25 postmortem in the front repo's docs/sources-log.md).
   ( cd "$repo" && export PATH="$node_dir:$PATH" \
       && node_modules/.bin/ng build common --configuration=development \
       && node_modules/.bin/ng build admin  --configuration=development \
       && node_modules/.bin/ng build app    --configuration=development \
+      && node_modules/.bin/ng lint \
       && node_modules/.bin/ng test  admin  --no-watch \
       && node_modules/.bin/ng test  app    --no-watch \
       && node_modules/.bin/ng test  common --no-watch ) >"$log" 2>&1
