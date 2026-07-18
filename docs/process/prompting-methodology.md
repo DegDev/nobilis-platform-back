@@ -33,7 +33,7 @@ Not every task earns a full recon. To avoid over-engineering trivia and under-es
 
 The condensed rule the assistant follows when authoring a prompt (the sections below expand each):
 
-1. **Type drives structure.** Every prompt is one of: RECON (read-only) / BUILD (implement) / FIX (bug) / DOCS (docs). Declare the type in the header; it dictates which sections are needed.
+1. **Type drives structure.** Every prompt is one of: RECON (read-only) / BUILD (implement) / FIX (bug) / DOCS (docs) / RULE (encode a behavioral or process rule). Declare the type in the header; it dictates which sections are needed.
 2. **Header sets the frame.** Task/ticket, branch, mode, commit-gate reminder (the agent doesn't commit itself — it ends with STOP + report + proposed commit message), which tools to use explicitly (the agent ignores them by default), cross-cutting constraints (read-only zones, conventions, package structure).
 3. **GATE-0 — mandatory check before code.** Before any implementation the agent confirms key points (signatures, existing patterns, constraints) and STOPS with a verdict if the task hits the impossible/unsafe. Catches a wrong mental model before files are written. The gate pays off — it has repeatedly caught unworkable tasks (can't write a read-only field; a method needs something that doesn't exist).
 4. **Context marked "recon-confirmed — do not re-verify."** What's already scouted is given as fact with a file:line reference, so the agent doesn't spend passes re-investigating. Separate the known from what the agent must find itself.

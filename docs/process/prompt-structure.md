@@ -93,3 +93,102 @@ If a draft prompt starts re-explaining one of these, cut it to a single pointer 
 A prompt follows the **FORMAT** defined here; the agent's **BEHAVIOUR** comes from
 [CLAUDE.md](../../CLAUDE.md) and is not overridden by prompt wording. On conflict, CLAUDE.md wins.
 Agent-neutral.
+
+---
+
+## REFERENCE TEMPLATES (copy the format; replace <...>; prompt in English; each plate = one code block, don't break it)
+
+### RECON
+
+```
+RECON — read-only. DO NOT modify code/config/migrations, no commits. Repo: <repo> (<path>), branch <branch>. <source-of-truth note if any>. No branch switch. Use jetbrains MCP for navigation/usages; context7 before asserting any library/framework API.
+
+## Context
+<what's known, what triggered this, the locked premise/decision>. <key artifacts/files under investigation>.
+
+## Tasks (decisive-first)
+1. DECISIVE: <cheapest fact that confirms/kills the leading hypothesis>.
+2. <trace/enumerate/classify — file:line + quote required>.
+3. <data-safety/blast-radius/dependency check>.
+
+## STOP
+Return:
+A. <bucket A>.
+B. <bucket B>.
+C. <...>.
+F. Premise-overturns/surprises.
+
+Read-only. No code, no DoD. Subagent only if broad → Sonnet.
+```
+
+### BUILD
+
+```
+BUILD — <one-line goal>. <LIGHT|HEAVY>. Repo: <repo> only. Branch: <branch> (base <base>; switch yourself, checkout≠commit). Do NOT commit. Use jetbrains MCP explicitly; context7 before any library/framework API; playwright for any front UI verification (milestone 03+). Engine = mechanism, domain concerns stay out.
+
+## GATE-0 (before code)
+1. Confirm file:line entry point (quote, not paraphrase).
+2. STOP if <X> impossible → return verdict, don't invent a workaround.
+
+## Locked decisions (numbered — CC does not re-decide)
+<decision agreed, one line each>.
+
+## Tasks by commit
+Commit 1: <minimal self-contained change>.
+Trap inline: <known pitfall here>.
+
+## DoD
+Build green — `mvn -B verify` (back) / `node_modules/.bin/ng build <project> --configuration=development` + Vitest (front, AOT = the only complete check); tests on touched paths, no regression; package-by-feature respected; Flyway migration if schema touched (back); Spotless/Checkstyle clean (back); i18n same pass for any new user-facing string (front); UI changes verified in the running browser via playwright (front, milestone 03+); no secrets; branch correct; sources-log updated for any non-trivial decision; protected boundary untouched.
+
+## STOP
+Report (what done, how verified) + proposed commit text `type(scope): subject`.
+Out of scope: <what we don't touch this pass>.
+```
+
+### FIX
+
+```
+FIX — <bug one-liner>. <LIGHT|HEAVY>. Repo: <repo> only. Branch: <branch>. Do NOT commit. Use jetbrains MCP; context7 if a library API is in question.
+
+## Root (fact, not guess — recon-confirmed/code-quoted)
+<file:line + quote of the actual defect>.
+
+## GATE-0
+1. Confirm the root above; STOP + report if different (don't patch blind).
+
+## Fix
+<surgical change; don't touch control-flow for "cleaner">; separate commits: correctness vs refactor (don't mix).
+
+## DoD
+Build green — `mvn -B verify` (back) / `node_modules/.bin/ng build <project> --configuration=development` (front); a test reproducing the bug (was-red-now-green); i18n same pass if user-facing (front); no secrets; sources-log if the cause is non-obvious.
+
+## STOP
+Report + proposed commit text `fix(scope): subject`.
+```
+
+### DOCS
+
+```
+DOCS — <what doc/playbook, why>. Edit ONLY the .md. No code, no BUILD, no commits.
+
+## Changes
+View first → surgical patch, NOT full rewrite (lesson: rewrite loses content); sync mirrors/indexes (README, paired back/front docs, internal links); <what to add/change, section by section>.
+
+## STOP
+Report which file(s) edited + the added section + proposed commit text `docs(scope): subject`.
+```
+
+### RULE
+
+```
+RULE — <behavioral/process rule to encode, where it lives>. Edit ONLY the target md. No commits.
+
+## Rule
+<the rule, imperative, one place of truth>; behavior → CLAUDE.md, format → prompt-structure.md, process → prompting-methodology.md (don't duplicate).
+
+## GATE-0
+1. grep ALL occurrences; update every one (no drift between copies).
+
+## STOP
+Report edited files + proposed commit text `docs(methodology): subject`.
+```
