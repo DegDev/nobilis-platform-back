@@ -73,6 +73,8 @@ Java Format, if Spring fluent/builder chains read better at 4-space.)
 - **EditorConfig** in both repos: charset, EOL, indent, trailing-whitespace. Read by all IDEs.
 - **Pin formatter versions** — otherwise format drifts between machines and CI.
 - Tests — next to the feature; unified test-naming conventions (to be settled with the first module).
+- **Playwright MCP artifacts** (screenshots, snapshots, traces) live in `/tmp/nobilis-playwright`,
+  never in either repo tree — configured via the `playwright` MCP server's `--output-dir`.
 
 ## Commit messages
 

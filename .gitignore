@@ -53,6 +53,11 @@ application-local.yaml
 .claude/local-config.json
 .claude/settings.local.json
 
+# --- Playwright MCP artifacts (should live in /tmp/nobilis-playwright, safety net only) ---
+/.playwright-mcp/
+/page-*.png
+/page-*.jpeg
+
 # --- CC tooling — provisioned binaries, never committed ---
 .claude/tools/
 
